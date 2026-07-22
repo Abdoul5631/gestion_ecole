@@ -1,0 +1,106 @@
+[
+{
+  "model": "evaluations.evaluation",
+  "pk": 1,
+  "fields": {
+    "classe_matiere": 1,
+    "trimestre": 1,
+    "type": "DEVOIR",
+    "libelle": "Devoir n°1 - Chapitre 1",
+    "date": "2024-11-05",
+    "coefficient": "1.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 2,
+  "fields": {
+    "classe_matiere": 1,
+    "trimestre": 1,
+    "type": "COMPOSITION",
+    "libelle": "Composition T1 - Mathématiques",
+    "date": "2024-12-10",
+    "coefficient": "2.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 3,
+  "fields": {
+    "classe_matiere": 2,
+    "trimestre": 1,
+    "type": "DEVOIR",
+    "libelle": "Devoir n°1 - Expression écrite",
+    "date": "2024-11-06",
+    "coefficient": "1.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 4,
+  "fields": {
+    "classe_matiere": 2,
+    "trimestre": 1,
+    "type": "COMPOSITION",
+    "libelle": "Composition T1 - Français",
+    "date": "2024-12-11",
+    "coefficient": "2.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 5,
+  "fields": {
+    "classe_matiere": 3,
+    "trimestre": 1,
+    "type": "DEVOIR",
+    "libelle": "Devoir n°1 - Histoire",
+    "date": "2024-11-07",
+    "coefficient": "1.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 6,
+  "fields": {
+    "classe_matiere": 4,
+    "trimestre": 1,
+    "type": "DEVOIR",
+    "libelle": "Devoir n°1 - SVT",
+    "date": "2024-11-08",
+    "coefficient": "1.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 7,
+  "fields": {
+    "classe_matiere": 5,
+    "trimestre": 1,
+    "type": "DEVOIR",
+    "libelle": "Devoir n°1 - Physique",
+    "date": "2024-11-09",
+    "coefficient": "1.00",
+    "note_sur": "20.00"
+  }
+},
+{
+  "model": "evaluations.evaluation",
+  "pk": 8,
+  "fields": {
+    "classe_matiere": 6,
+    "trimestre": 1,
+    "type": "DEVOIR",
+    "libelle": "Devoir n°1 - Anglais",
+    "date": "2024-11-10",
+    "coefficient": "1.00",
+    "note_sur": "20.00"
+  }
+}
+]

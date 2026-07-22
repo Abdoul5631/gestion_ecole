@@ -1,0 +1,58 @@
+[
+{
+  "model": "scolarite.niveau",
+  "pk": 1,
+  "fields": {
+    "nom": "6eme",
+    "ordre": 1
+  }
+},
+{
+  "model": "scolarite.niveau",
+  "pk": 2,
+  "fields": {
+    "nom": "5eme",
+    "ordre": 2
+  }
+},
+{
+  "model": "scolarite.niveau",
+  "pk": 3,
+  "fields": {
+    "nom": "4eme",
+    "ordre": 3
+  }
+},
+{
+  "model": "scolarite.niveau",
+  "pk": 4,
+  "fields": {
+    "nom": "3eme",
+    "ordre": 4
+  }
+},
+{
+  "model": "scolarite.niveau",
+  "pk": 5,
+  "fields": {
+    "nom": "2nde",
+    "ordre": 5
+  }
+},
+{
+  "model": "scolarite.niveau",
+  "pk": 6,
+  "fields": {
+    "nom": "1ere",
+    "ordre": 6
+  }
+},
+{
+  "model": "scolarite.niveau",
+  "pk": 7,
+  "fields": {
+    "nom": "Terminale",
+    "ordre": 7
+  }
+}
+]

@@ -1,0 +1,32 @@
+[
+{
+  "model": "scolarite.trimestre",
+  "pk": 1,
+  "fields": {
+    "annee": 1,
+    "nom": "T1",
+    "date_debut": "2024-10-01",
+    "date_fin": "2024-12-20"
+  }
+},
+{
+  "model": "scolarite.trimestre",
+  "pk": 2,
+  "fields": {
+    "annee": 1,
+    "nom": "T2",
+    "date_debut": "2025-01-07",
+    "date_fin": "2025-03-28"
+  }
+},
+{
+  "model": "scolarite.trimestre",
+  "pk": 3,
+  "fields": {
+    "annee": 1,
+    "nom": "T3",
+    "date_debut": "2025-04-07",
+    "date_fin": "2025-07-04"
+  }
+}
+]

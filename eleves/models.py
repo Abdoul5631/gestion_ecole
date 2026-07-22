@@ -2,19 +2,18 @@ from django.db import models
 
 
 class Eleve(models.Model):
-    SEXE_CHOICES = [("M", "Masculin"), ("F", "Féminin")]
-
-    matricule = models.CharField(unique=True, max_length=20)
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
-    sexe = models.CharField(max_length=1, choices=SEXE_CHOICES)
-    date_naissance = models.DateField()
-    lieu_naissance = models.CharField(max_length=100, blank=True, null=True)
-    est_actif = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    matricule = models.CharField(max_length=20, unique=True)
+    date_naissance = models.DateField(null=True, blank=True)
+    lieu_naissance = models.CharField(max_length=100, blank=True, default='')
+    sexe = models.CharField(max_length=1, choices=[('M', 'Masculin'), ('F', 'Féminin')], blank=True, default='')
+    nom_parent = models.CharField(max_length=100, blank=True, default='')
+    prenom_parent = models.CharField(max_length=100, blank=True, default='')
+    telephone_parent = models.CharField(max_length=20, blank=True, default='')
+    is_active = models.BooleanField(default=True)
 
     class Meta:
-        managed = False
         db_table = 'eleve'
         ordering = ['nom', 'prenom']
 
@@ -24,25 +23,19 @@ class Eleve(models.Model):
 
 class Presence(models.Model):
     STATUT_CHOICES = [
-        ("PRESENT", "Présent"),
-        ("ABSENT", "Absent"),
-        ("RETARD", "En retard"),
-        ("EXCUSE", "Absent excusé"),
+        ('PRESENT', 'Présent'),
+        ('ABSENT', 'Absent'),
+        ('RETARD', 'En retard'),
+        ('EXCUSE', 'Excusé'),
     ]
-    eleve = models.ForeignKey(Eleve, on_delete=models.CASCADE, related_name="presences")
+    eleve = models.ForeignKey(Eleve, on_delete=models.CASCADE, related_name='presences')
     classe_matiere = models.ForeignKey(
-        'cours.ClasseMatiere',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name="presences"
+        'cours.ClasseMatiere', on_delete=models.CASCADE, related_name='presences'
     )
     date = models.DateField()
-    statut = models.CharField(max_length=10, choices=STATUT_CHOICES, default="PRESENT")
-    motif = models.TextField(blank=True, null=True)
-    enregistre_le = models.DateTimeField(auto_now_add=True)
+    statut = models.CharField(max_length=10, choices=STATUT_CHOICES, default='PRESENT')
 
     class Meta:
-        managed = False
         db_table = 'presence'
         unique_together = [['eleve', 'classe_matiere', 'date']]
 

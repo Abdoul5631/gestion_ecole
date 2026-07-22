@@ -1,0 +1,242 @@
+[
+{
+  "model": "eleves.presence",
+  "pk": 1,
+  "fields": {
+    "eleve": 1,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 2,
+  "fields": {
+    "eleve": 2,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 3,
+  "fields": {
+    "eleve": 3,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "ABSENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 4,
+  "fields": {
+    "eleve": 4,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 5,
+  "fields": {
+    "eleve": 5,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "RETARD",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 6,
+  "fields": {
+    "eleve": 6,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 7,
+  "fields": {
+    "eleve": 7,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 8,
+  "fields": {
+    "eleve": 8,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "EXCUSE",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 9,
+  "fields": {
+    "eleve": 9,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 10,
+  "fields": {
+    "eleve": 10,
+    "classe_matiere": 1,
+    "date": "2024-11-04",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 11,
+  "fields": {
+    "eleve": 1,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 12,
+  "fields": {
+    "eleve": 2,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "ABSENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 13,
+  "fields": {
+    "eleve": 3,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 14,
+  "fields": {
+    "eleve": 4,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 15,
+  "fields": {
+    "eleve": 5,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 16,
+  "fields": {
+    "eleve": 6,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "RETARD",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 17,
+  "fields": {
+    "eleve": 7,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 18,
+  "fields": {
+    "eleve": 8,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 19,
+  "fields": {
+    "eleve": 9,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "ABSENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.presence",
+  "pk": 20,
+  "fields": {
+    "eleve": 10,
+    "classe_matiere": 2,
+    "date": "2024-11-05",
+    "statut": "PRESENT",
+    "motif": null,
+    "enregistre_le": "2026-05-05T13:18:05Z"
+  }
+}
+]

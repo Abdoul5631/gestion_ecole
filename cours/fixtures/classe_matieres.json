@@ -1,0 +1,79 @@
+[
+{
+  "model": "cours.classematiere",
+  "pk": 1,
+  "fields": {
+    "niveau": 1,
+    "matiere": 1,
+    "enseignant": 1,
+    "annee": 1,
+    "volume_horaire": 4
+  }
+},
+{
+  "model": "cours.classematiere",
+  "pk": 2,
+  "fields": {
+    "niveau": 1,
+    "matiere": 2,
+    "enseignant": 2,
+    "annee": 1,
+    "volume_horaire": 4
+  }
+},
+{
+  "model": "cours.classematiere",
+  "pk": 3,
+  "fields": {
+    "niveau": 1,
+    "matiere": 3,
+    "enseignant": 3,
+    "annee": 1,
+    "volume_horaire": 2
+  }
+},
+{
+  "model": "cours.classematiere",
+  "pk": 4,
+  "fields": {
+    "niveau": 1,
+    "matiere": 4,
+    "enseignant": 4,
+    "annee": 1,
+    "volume_horaire": 2
+  }
+},
+{
+  "model": "cours.classematiere",
+  "pk": 5,
+  "fields": {
+    "niveau": 1,
+    "matiere": 5,
+    "enseignant": 4,
+    "annee": 1,
+    "volume_horaire": 2
+  }
+},
+{
+  "model": "cours.classematiere",
+  "pk": 6,
+  "fields": {
+    "niveau": 1,
+    "matiere": 6,
+    "enseignant": 5,
+    "annee": 1,
+    "volume_horaire": 2
+  }
+},
+{
+  "model": "cours.classematiere",
+  "pk": 7,
+  "fields": {
+    "niveau": 1,
+    "matiere": 7,
+    "enseignant": 5,
+    "annee": 1,
+    "volume_horaire": 1
+  }
+}
+]

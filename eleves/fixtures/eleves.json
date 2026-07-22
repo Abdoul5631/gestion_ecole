@@ -1,0 +1,142 @@
+[
+{
+  "model": "eleves.eleve",
+  "pk": 1,
+  "fields": {
+    "matricule": "EL001",
+    "nom": "Traoré",
+    "prenom": "Moussa",
+    "sexe": "M",
+    "date_naissance": "2010-05-15",
+    "lieu_naissance": "Bobo-Dioulasso",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 2,
+  "fields": {
+    "matricule": "EL002",
+    "nom": "Ouédraogo",
+    "prenom": "Fatou",
+    "sexe": "F",
+    "date_naissance": "2011-03-20",
+    "lieu_naissance": "Ouagadougou",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 3,
+  "fields": {
+    "matricule": "EL003",
+    "nom": "Sawadogo",
+    "prenom": "Ibrahim",
+    "sexe": "M",
+    "date_naissance": "2010-08-10",
+    "lieu_naissance": "Bobo-Dioulasso",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 4,
+  "fields": {
+    "matricule": "EL004",
+    "nom": "Koné",
+    "prenom": "Aïcha",
+    "sexe": "F",
+    "date_naissance": "2011-01-05",
+    "lieu_naissance": "Banfora",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 5,
+  "fields": {
+    "matricule": "EL005",
+    "nom": "Diallo",
+    "prenom": "Seydou",
+    "sexe": "M",
+    "date_naissance": "2010-11-25",
+    "lieu_naissance": "Bobo-Dioulasso",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 6,
+  "fields": {
+    "matricule": "EL006",
+    "nom": "Zongo",
+    "prenom": "Marie",
+    "sexe": "F",
+    "date_naissance": "2011-06-15",
+    "lieu_naissance": "Ouagadougou",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 7,
+  "fields": {
+    "matricule": "EL007",
+    "nom": "Compaoré",
+    "prenom": "Ali",
+    "sexe": "M",
+    "date_naissance": "2010-09-30",
+    "lieu_naissance": "Bobo-Dioulasso",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 8,
+  "fields": {
+    "matricule": "EL008",
+    "nom": "Barro",
+    "prenom": "Salimata",
+    "sexe": "F",
+    "date_naissance": "2011-04-12",
+    "lieu_naissance": "Dédougou",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 9,
+  "fields": {
+    "matricule": "EL009",
+    "nom": "Some",
+    "prenom": "Pascal",
+    "sexe": "M",
+    "date_naissance": "2010-07-22",
+    "lieu_naissance": "Gaoua",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "eleves.eleve",
+  "pk": 10,
+  "fields": {
+    "matricule": "EL010",
+    "nom": "Coulibaly",
+    "prenom": "Mariam",
+    "sexe": "F",
+    "date_naissance": "2011-02-18",
+    "lieu_naissance": "Bobo-Dioulasso",
+    "est_actif": true,
+    "created_at": "2026-05-05T13:18:05Z"
+  }
+}
+]

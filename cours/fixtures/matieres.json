@@ -1,0 +1,72 @@
+[
+{
+  "model": "cours.matiere",
+  "pk": 1,
+  "fields": {
+    "code": "MATH",
+    "nom": "Mathématiques",
+    "coefficient": "4.00",
+    "type": "PRINCIPALE"
+  }
+},
+{
+  "model": "cours.matiere",
+  "pk": 2,
+  "fields": {
+    "code": "FR",
+    "nom": "Français",
+    "coefficient": "4.00",
+    "type": "PRINCIPALE"
+  }
+},
+{
+  "model": "cours.matiere",
+  "pk": 3,
+  "fields": {
+    "code": "HG",
+    "nom": "Histoire-Géographie",
+    "coefficient": "2.00",
+    "type": "PRINCIPALE"
+  }
+},
+{
+  "model": "cours.matiere",
+  "pk": 4,
+  "fields": {
+    "code": "SVT",
+    "nom": "Sciences de la Vie",
+    "coefficient": "2.00",
+    "type": "PRINCIPALE"
+  }
+},
+{
+  "model": "cours.matiere",
+  "pk": 5,
+  "fields": {
+    "code": "PC",
+    "nom": "Physique-Chimie",
+    "coefficient": "2.00",
+    "type": "PRINCIPALE"
+  }
+},
+{
+  "model": "cours.matiere",
+  "pk": 6,
+  "fields": {
+    "code": "ANG",
+    "nom": "Anglais",
+    "coefficient": "2.00",
+    "type": "PRINCIPALE"
+  }
+},
+{
+  "model": "cours.matiere",
+  "pk": 7,
+  "fields": {
+    "code": "EPS",
+    "nom": "Éducation Physique",
+    "coefficient": "1.00",
+    "type": "SECONDAIRE"
+  }
+}
+]

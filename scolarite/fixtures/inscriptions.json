@@ -1,0 +1,122 @@
+[
+{
+  "model": "scolarite.inscription",
+  "pk": 1,
+  "fields": {
+    "eleve": 1,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-01",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 2,
+  "fields": {
+    "eleve": 2,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-01",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 3,
+  "fields": {
+    "eleve": 3,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-02",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 4,
+  "fields": {
+    "eleve": 4,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-02",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 5,
+  "fields": {
+    "eleve": 5,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-03",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 6,
+  "fields": {
+    "eleve": 6,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-03",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 7,
+  "fields": {
+    "eleve": 7,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-04",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 8,
+  "fields": {
+    "eleve": 8,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-04",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 9,
+  "fields": {
+    "eleve": 9,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-05",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+},
+{
+  "model": "scolarite.inscription",
+  "pk": 10,
+  "fields": {
+    "eleve": 10,
+    "annee": 1,
+    "niveau": 1,
+    "date_inscription": "2024-10-05",
+    "statut": "VALIDE",
+    "montant_scolarite": "25000.00"
+  }
+}
+]

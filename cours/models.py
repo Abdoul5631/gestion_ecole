@@ -2,74 +2,76 @@ from django.db import models
 
 
 class Enseignant(models.Model):
-    SEXE_CHOICES = [("M", "Masculin"), ("F", "Féminin")]
-
     nom = models.CharField(max_length=100)
-    prenom = models.CharField(max_length=100)
-    sexe = models.CharField(max_length=1, choices=SEXE_CHOICES)
-    telephone = models.CharField(max_length=20, blank=True, null=True)
-    email = models.EmailField(unique=True, max_length=150)
-    date_embauche = models.DateField(blank=True, null=True)
-    est_actif = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    prenom    = models.CharField(max_length=100, blank=True, default='')
+    signature = models.ImageField(upload_to='signatures_enseignants/', null=True, blank=True)
 
     class Meta:
-        managed = False
         db_table = 'enseignant'
-        ordering = ['nom', 'prenom']
+        ordering = ['nom']
 
     def __str__(self):
-        return f"{self.prenom} {self.nom}"
+        return self.nom
 
 
 class Matiere(models.Model):
     TYPE_CHOICES = [
-        ('PRINCIPALE', 'Principale'),
-        ('SECONDAIRE', 'Secondaire'),
-        ('OPTION', 'Option'),
+        ('SCIENTIFIQUE', 'Scientifique'),
+        ('LITTERATURE', 'Littérature'),
+        ('AUTRES', 'Autres'),
     ]
-
-    code = models.CharField(unique=True, max_length=10)
-    nom = models.CharField(unique=True, max_length=100)
-    coefficient = models.DecimalField(max_digits=4, decimal_places=2)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='PRINCIPALE')
+    nom = models.CharField(max_length=100, unique=True)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='SCIENTIFIQUE')
 
     class Meta:
-        managed = False
         db_table = 'matiere'
         ordering = ['nom']
 
     def __str__(self):
-        return f"{self.code} — {self.nom} (coef. {self.coefficient})"
+        return self.nom
 
 
 class ClasseMatiere(models.Model):
-    niveau = models.ForeignKey(
-        'scolarite.Niveau',
-        on_delete=models.CASCADE,
-        related_name='classe_matieres'
+    classe = models.ForeignKey(
+        'scolarite.Classe', on_delete=models.CASCADE, related_name='classe_matieres',
+        null=True, blank=True
     )
     matiere = models.ForeignKey(
-        Matiere,
-        on_delete=models.CASCADE,
-        related_name='classe_matieres'
+        Matiere, on_delete=models.CASCADE, related_name='classe_matieres'
     )
     enseignant = models.ForeignKey(
-        Enseignant,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
+        Enseignant, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='classe_matieres'
     )
-    annee = models.ForeignKey(
-        'scolarite.AnneeScolaire',
-        on_delete=models.CASCADE,
-        related_name='classe_matieres'
-    )
-    volume_horaire = models.SmallIntegerField(default=0)
+    coef = models.FloatField(default=1.0)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
-        managed = False
         db_table = 'classe_matiere'
-        unique_together = [['niveau', 'matiere', 'annee']]
+        unique_together = [['classe', 'matiere']]
 
     def __str__(self):
-        return f"{self.matiere} / {self.niveau} ({self.annee})"
+        return f"{self.matiere} / {self.classe}"
+
+
+class EmploiDuTemps(models.Model):
+    JOURS = [
+        ('LUNDI', 'Lundi'), ('MARDI', 'Mardi'), ('MERCREDI', 'Mercredi'),
+        ('JEUDI', 'Jeudi'), ('VENDREDI', 'Vendredi'), ('SAMEDI', 'Samedi'),
+    ]
+    classe_matiere = models.ForeignKey(
+        ClasseMatiere, on_delete=models.CASCADE, related_name='emplois'
+    )
+    jour = models.CharField(max_length=10, choices=JOURS)
+    heure_debut = models.TimeField()
+    heure_fin = models.TimeField()
+    salle = models.CharField(max_length=50, blank=True, default='')
+
+    class Meta:
+        db_table = 'emploi_du_temps'
+        ordering = ['jour', 'heure_debut']
+        unique_together = [['classe_matiere', 'jour', 'heure_debut']]
+
+    def __str__(self):
+        return f"{self.classe_matiere} – {self.jour} {self.heure_debut}"

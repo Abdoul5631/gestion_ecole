@@ -1,30 +1,34 @@
 from django.contrib import admin
-from .models import AnneeScolaire, Niveau, Trimestre, Inscription
+from .models import AnneeScolaire, Niveau, Classe, Trimestre, Inscription
 
 
 @admin.register(AnneeScolaire)
 class AnneeScolaireAdmin(admin.ModelAdmin):
-    list_display = ['libelle', 'date_debut', 'date_fin', 'est_active']
-    list_filter = ['est_active']
+    list_display = ['libelle']
     search_fields = ['libelle']
 
 
 @admin.register(Niveau)
 class NiveauAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'ordre']
-    ordering = ['ordre']
+    list_display = ['nom']
+    search_fields = ['nom']
+
+
+@admin.register(Classe)
+class ClasseAdmin(admin.ModelAdmin):
+    list_display = ['nom', 'niveau', 'professeur_principal']
+    list_filter = ['niveau']
+    search_fields = ['nom', 'niveau__nom']
 
 
 @admin.register(Trimestre)
 class TrimestreAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'annee', 'date_debut', 'date_fin']
-    list_filter = ['annee', 'nom']
-    ordering = ['annee', 'nom']
+    list_display = ['nom', 'annee_scolaire']
+    list_filter = ['annee_scolaire']
 
 
 @admin.register(Inscription)
 class InscriptionAdmin(admin.ModelAdmin):
-    list_display = ['eleve', 'niveau', 'annee', 'date_inscription', 'statut', 'montant_scolarite']
-    list_filter = ['statut', 'annee', 'niveau']
+    list_display = ['eleve', 'classe', 'date_inscription']
+    list_filter = ['classe__niveau']
     search_fields = ['eleve__nom', 'eleve__prenom', 'eleve__matricule']
-    ordering = ['-annee', 'eleve__nom']

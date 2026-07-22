@@ -4,23 +4,22 @@ from .models import Enseignant, Matiere, ClasseMatiere
 
 @admin.register(Enseignant)
 class EnseignantAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'prenom', 'sexe', 'telephone', 'email', 'est_actif']
-    list_filter = ['sexe', 'est_actif']
-    search_fields = ['nom', 'prenom', 'email']
-    ordering = ['nom', 'prenom']
+    list_display = ['nom']
+    search_fields = ['nom']
+    ordering = ['nom']
 
 
 @admin.register(Matiere)
 class MatiereAdmin(admin.ModelAdmin):
-    list_display = ['code', 'nom', 'coefficient', 'type']
+    list_display = ['nom', 'type']
     list_filter = ['type']
-    search_fields = ['code', 'nom']
+    search_fields = ['nom']
     ordering = ['nom']
 
 
 @admin.register(ClasseMatiere)
 class ClasseMatiereAdmin(admin.ModelAdmin):
-    list_display = ['niveau', 'matiere', 'enseignant', 'annee', 'volume_horaire']
-    list_filter = ['annee', 'niveau', 'matiere']
-    search_fields = ['enseignant__nom', 'matiere__nom', 'niveau__nom']
-    ordering = ['annee', 'niveau', 'matiere']
+    list_display = ['classe', 'matiere', 'enseignant', 'coef']
+    list_filter = ['classe__niveau', 'matiere']
+    search_fields = ['enseignant__nom', 'matiere__nom', 'classe__nom']
+    ordering = ['classe', 'matiere']

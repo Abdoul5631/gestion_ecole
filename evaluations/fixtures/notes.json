@@ -1,0 +1,522 @@
+[
+{
+  "model": "evaluations.note",
+  "pk": 1,
+  "fields": {
+    "eleve": 1,
+    "evaluation": 1,
+    "valeur": "15.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 2,
+  "fields": {
+    "eleve": 2,
+    "evaluation": 1,
+    "valeur": "12.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 3,
+  "fields": {
+    "eleve": 3,
+    "evaluation": 1,
+    "valeur": "18.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 4,
+  "fields": {
+    "eleve": 4,
+    "evaluation": 1,
+    "valeur": "10.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 5,
+  "fields": {
+    "eleve": 5,
+    "evaluation": 1,
+    "valeur": "14.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 6,
+  "fields": {
+    "eleve": 6,
+    "evaluation": 1,
+    "valeur": "16.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 7,
+  "fields": {
+    "eleve": 7,
+    "evaluation": 1,
+    "valeur": "11.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 8,
+  "fields": {
+    "eleve": 8,
+    "evaluation": 1,
+    "valeur": "13.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 9,
+  "fields": {
+    "eleve": 9,
+    "evaluation": 1,
+    "valeur": "17.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 10,
+  "fields": {
+    "eleve": 10,
+    "evaluation": 1,
+    "valeur": "9.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 11,
+  "fields": {
+    "eleve": 1,
+    "evaluation": 2,
+    "valeur": "14.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 12,
+  "fields": {
+    "eleve": 2,
+    "evaluation": 2,
+    "valeur": "11.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 13,
+  "fields": {
+    "eleve": 3,
+    "evaluation": 2,
+    "valeur": "17.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 14,
+  "fields": {
+    "eleve": 4,
+    "evaluation": 2,
+    "valeur": "8.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 15,
+  "fields": {
+    "eleve": 5,
+    "evaluation": 2,
+    "valeur": "13.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 16,
+  "fields": {
+    "eleve": 6,
+    "evaluation": 2,
+    "valeur": "15.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 17,
+  "fields": {
+    "eleve": 7,
+    "evaluation": 2,
+    "valeur": "10.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 18,
+  "fields": {
+    "eleve": 8,
+    "evaluation": 2,
+    "valeur": "12.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 19,
+  "fields": {
+    "eleve": 9,
+    "evaluation": 2,
+    "valeur": "16.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 20,
+  "fields": {
+    "eleve": 10,
+    "evaluation": 2,
+    "valeur": "9.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 21,
+  "fields": {
+    "eleve": 1,
+    "evaluation": 3,
+    "valeur": "13.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 22,
+  "fields": {
+    "eleve": 2,
+    "evaluation": 3,
+    "valeur": "15.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 23,
+  "fields": {
+    "eleve": 3,
+    "evaluation": 3,
+    "valeur": "12.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 24,
+  "fields": {
+    "eleve": 4,
+    "evaluation": 3,
+    "valeur": "14.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 25,
+  "fields": {
+    "eleve": 5,
+    "evaluation": 3,
+    "valeur": "11.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 26,
+  "fields": {
+    "eleve": 6,
+    "evaluation": 3,
+    "valeur": "16.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 27,
+  "fields": {
+    "eleve": 7,
+    "evaluation": 3,
+    "valeur": "13.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 28,
+  "fields": {
+    "eleve": 8,
+    "evaluation": 3,
+    "valeur": "14.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 29,
+  "fields": {
+    "eleve": 9,
+    "evaluation": 3,
+    "valeur": "10.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 30,
+  "fields": {
+    "eleve": 10,
+    "evaluation": 3,
+    "valeur": "15.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 31,
+  "fields": {
+    "eleve": 1,
+    "evaluation": 4,
+    "valeur": "12.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 32,
+  "fields": {
+    "eleve": 2,
+    "evaluation": 4,
+    "valeur": "14.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 33,
+  "fields": {
+    "eleve": 3,
+    "evaluation": 4,
+    "valeur": "11.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 34,
+  "fields": {
+    "eleve": 4,
+    "evaluation": 4,
+    "valeur": "13.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 35,
+  "fields": {
+    "eleve": 5,
+    "evaluation": 4,
+    "valeur": "10.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 36,
+  "fields": {
+    "eleve": 6,
+    "evaluation": 4,
+    "valeur": "15.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 37,
+  "fields": {
+    "eleve": 7,
+    "evaluation": 4,
+    "valeur": "12.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 38,
+  "fields": {
+    "eleve": 8,
+    "evaluation": 4,
+    "valeur": "13.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 39,
+  "fields": {
+    "eleve": 9,
+    "evaluation": 4,
+    "valeur": "11.00",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+},
+{
+  "model": "evaluations.note",
+  "pk": 40,
+  "fields": {
+    "eleve": 10,
+    "evaluation": 4,
+    "valeur": "14.50",
+    "est_absent": false,
+    "observation": "",
+    "saisie_le": "2026-05-05T13:18:05Z",
+    "modifie_le": "2026-05-05T13:18:05Z"
+  }
+}
+]

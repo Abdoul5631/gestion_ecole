@@ -1,59 +1,91 @@
 from rest_framework import viewsets, filters
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from .models import AnneeScolaire, Niveau, Trimestre, Inscription
+from rest_framework.permissions import IsAuthenticated
+from .models import AnneeScolaire, Niveau, Classe, Trimestre, Inscription
 from .serializers import (
-    AnneeScolaireSerializer, NiveauSerializer,
+    AnneeScolaireSerializer, NiveauSerializer, ClasseSerializer,
     TrimestreSerializer, InscriptionSerializer
 )
+from accounts.permissions import IsAdmin
 
 
 class AnneeScolaireViewSet(viewsets.ModelViewSet):
     queryset = AnneeScolaire.objects.all()
     serializer_class = AnneeScolaireSerializer
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['libelle', 'date_debut']
 
-    @action(detail=False, methods=['get'])
-    def active(self, request):
-        """Retourne l'année scolaire active"""
-        annee = AnneeScolaire.objects.filter(est_active=True).first()
-        if annee:
-            serializer = self.get_serializer(annee)
-            return Response(serializer.data)
-        return Response({'detail': 'Aucune année active trouvée.'}, status=404)
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
 
 
 class NiveauViewSet(viewsets.ModelViewSet):
     queryset = Niveau.objects.all()
     serializer_class = NiveauSerializer
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['ordre', 'nom']
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
+
+class ClasseViewSet(viewsets.ModelViewSet):
+    serializer_class = ClasseSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['nom', 'niveau__nom']
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        qs = Classe.objects.select_related('niveau', 'professeur_principal')
+        niveau_id = self.request.query_params.get('niveau_id')
+        if niveau_id:
+            qs = qs.filter(niveau_id=niveau_id)
+        return qs
 
 
 class TrimestreViewSet(viewsets.ModelViewSet):
     queryset = Trimestre.objects.all()
     serializer_class = TrimestreSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['nom', 'annee__libelle']
-    ordering_fields = ['annee', 'nom']
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        qs = Trimestre.objects.all()
+        annee_id = self.request.query_params.get('annee_id')
+        if annee_id:
+            qs = qs.filter(annee_scolaire_id=annee_id)
+        return qs
 
 
 class InscriptionViewSet(viewsets.ModelViewSet):
-    queryset = Inscription.objects.all()
     serializer_class = InscriptionSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [filters.SearchFilter]
     search_fields = ['eleve__nom', 'eleve__prenom', 'eleve__matricule']
-    ordering_fields = ['date_inscription', 'statut']
 
-    @action(detail=False, methods=['get'])
-    def par_niveau(self, request):
-        """Retourne le nombre d'élèves par niveau"""
-        from django.db.models import Count
-        data = (
-            Inscription.objects
-            .values('niveau__nom')
-            .annotate(total=Count('id'))
-            .order_by('niveau__ordre')
-        )
-        return Response(list(data))
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Inscription.objects.select_related('eleve', 'classe__niveau')
+
+        classe_id = self.request.query_params.get('classe_id')
+        niveau_id = self.request.query_params.get('niveau_id')
+        if classe_id:
+            qs = qs.filter(classe_id=classe_id)
+        elif niveau_id:
+            qs = qs.filter(classe__niveau_id=niveau_id)
+
+        if user.role == 'ADMIN' or user.role == 'ENSEIGNANT':
+            return qs
+        if user.role in ['ELEVE', 'PARENT'] and user.eleve:
+            return qs.filter(eleve=user.eleve)
+        return Inscription.objects.none()

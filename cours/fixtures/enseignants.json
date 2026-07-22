@@ -1,0 +1,67 @@
+[
+{
+  "model": "cours.enseignant",
+  "pk": 1,
+  "fields": {
+    "nom": "Koné",
+    "prenom": "Amadou",
+    "sexe": "M",
+    "telephone": "+22670000001",
+    "email": "a.kone@ecole.bf",
+    "date_embauche": "2020-09-01",
+    "est_actif": true
+  }
+},
+{
+  "model": "cours.enseignant",
+  "pk": 2,
+  "fields": {
+    "nom": "Sawadogo",
+    "prenom": "Fatima",
+    "sexe": "F",
+    "telephone": "+22670000002",
+    "email": "f.sawadogo@ecole.bf",
+    "date_embauche": "2019-09-01",
+    "est_actif": true
+  }
+},
+{
+  "model": "cours.enseignant",
+  "pk": 3,
+  "fields": {
+    "nom": "Ouédraogo",
+    "prenom": "Issouf",
+    "sexe": "M",
+    "telephone": "+22670000003",
+    "email": "i.ouedraogo@ecole.bf",
+    "date_embauche": "2021-09-01",
+    "est_actif": true
+  }
+},
+{
+  "model": "cours.enseignant",
+  "pk": 4,
+  "fields": {
+    "nom": "Traoré",
+    "prenom": "Aminata",
+    "sexe": "F",
+    "telephone": "+22670000004",
+    "email": "a.traore@ecole.bf",
+    "date_embauche": "2018-09-01",
+    "est_actif": true
+  }
+},
+{
+  "model": "cours.enseignant",
+  "pk": 5,
+  "fields": {
+    "nom": "Diallo",
+    "prenom": "Mamadou",
+    "sexe": "M",
+    "telephone": "+22670000005",
+    "email": "m.diallo@ecole.bf",
+    "date_embauche": "2022-09-01",
+    "est_actif": true
+  }
+}
+]
