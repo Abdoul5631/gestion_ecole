@@ -1,7 +1,8 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Card, CardContent, Typography, Grid, MenuItem, TextField,
-  Button, Alert, CircularProgress, Chip, IconButton,
+  Button, Alert, CircularProgress, Divider, Chip, IconButton,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Tooltip
 } from '@mui/material';
@@ -9,14 +10,21 @@ import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EventIcon from '@mui/icons-material/Event';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import PublicationCalendrier from 'components/PublicationCalendrier';
 import { niveauService, trimestreService, classeMatiereService,
-         calendrierExamenBlancService, programmeExamenBlancService, getResults } from 'services/api';
+         calendrierExamenBlancService, programmeExamenBlancService, evaluationService, classeService, getResults } from 'services/api';
+
+const VIDE = { id: null, date: '', debut: '', fin: '' };
+const hhmm = (t) => (t || '').slice(0, 5);
+const aDate = (p) => !!p?.date;
 
 export default function ProgrammeExamenBlanc() {
   const [niveaux, setNiveaux] = useState([]);
   const [trimestres, setTrimestres] = useState([]);
   const [selectedNiveau, setSelectedNiveau] = useState('');
   const [selectedTrimestre, setSelectedTrimestre] = useState('');
+  const [classes, setClasses] = useState([]); // classes du niveau : en Terminale, chacune a son propre programme
+  const [selectedClasse, setSelectedClasse] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,14 +39,35 @@ export default function ProgrammeExamenBlanc() {
   // Matières disponibles pour ce niveau
   const [matieresDuNiveau, setMatieresDuNiveau] = useState([]);
 
-  // Programmes : { [matiereId]: { id (si existe), contenu } }
+  // Épreuves : { [matiereId]: { id (si existe), date, debut, fin } }
   const [programmes, setProgrammes] = useState({});
+
+  // Chargement des référentiels
+  const [generation, setGeneration] = useState(false);
+  const genererEvaluations = async (ceNiveau) => {
+    setGeneration(true);
+    setError('');
+    try {
+      const res = await evaluationService.generer({
+        type: 'EXAMEN_BLANC',
+        trimestre_id: selectedTrimestre,
+        niveau_id: ceNiveau ? selectedNiveau : undefined,
+      });
+      setSuccess(res.data?.message || 'Évaluations programmées.');
+      setTimeout(() => setSuccess(''), 6000);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Impossible de programmer les évaluations.');
+    } finally {
+      setGeneration(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([niveauService.getAll(), trimestreService.getAll()])
       .then(([rN, rT]) => {
         setNiveaux(getResults(rN).items.filter(n => n.is_classe_examen));
-        setTrimestres(rT.data);
+        setTrimestres(trimestresEnCours(rT.data));
+        setSelectedTrimestre(prev => prev || idTrimestreParDefaut(rT.data));
       });
   }, []);
 
@@ -52,29 +81,43 @@ export default function ProgrammeExamenBlanc() {
     setProgrammes({});
 
     try {
+      // 1. Classes du niveau, puis matières : en Terminale (Tle A ≠ Tle D) celles de la classe choisie, en 3ème toutes celles du niveau
+      const resCl = await classeService.getAll();
+      const lesClasses = (Array.isArray(resCl.data) ? resCl.data : resCl.data.results ?? [])
+        .filter(c => String(c.niveau) === String(selectedNiveau) && c.is_active !== false)
+        .sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr', { numeric: true }));
+      setClasses(lesClasses);
+      const classeId = lesClasses.some(c => String(c.id) === String(selectedClasse)) ? selectedClasse : (lesClasses[0]?.id || '');
+      if (String(classeId) !== String(selectedClasse)) setSelectedClasse(classeId);
+      const parClasse = !!niveaux.find(n => String(n.id) === String(selectedNiveau))?.examen_blanc_par_classe;
       const resCM = await classeMatiereService.getAll(`?niveau_id=${selectedNiveau}`);
       const uniqueMatieres = [
-        ...new Map(resCM.data.map(cm => [cm.matiere, { id: cm.matiere, nom: cm.matiere_nom }])).values()
+        ...new Map((Array.isArray(resCM.data) ? resCM.data : resCM.data.results ?? [])
+          .filter(cm => !parClasse || String(cm.classe) === String(classeId))
+          .map(cm => [cm.matiere, { id: cm.matiere, nom: cm.matiere_nom }])).values()
       ].sort((a, b) => a.nom.localeCompare(b.nom));
       setMatieresDuNiveau(uniqueMatieres);
 
+      // 2. Calendrier existant ?
       const resC = await calendrierExamenBlancService.getByNiveauTrimestre(selectedNiveau, selectedTrimestre);
-      const items = getResults(resC).items;
+      const items = Array.isArray(resC.data) ? resC.data : resC.data.results ?? [];
 
       if (items.length > 0) {
         const cal = items[0];
         setCalendrier(cal);
         setDateDebut(cal.date_debut);
         setDateFin(cal.date_fin);
+        // Initialiser programmes depuis cal.programmes
         const progMap = {};
-        uniqueMatieres.forEach(m => { progMap[m.id] = { id: null, contenu: '' }; });
-        cal.programmes.forEach(p => {
-          progMap[p.matiere] = { id: p.id, contenu: p.contenu };
+        uniqueMatieres.forEach(m => { progMap[m.id] = { ...VIDE }; });
+        cal.programmes.filter(p => (parClasse ? String(p.classe) === String(classeId) : !p.classe)).forEach(p => {
+          progMap[p.matiere] = { id: p.id, date: p.date_examen || '', debut: hhmm(p.heure_debut), fin: hhmm(p.heure_fin) };
         });
         setProgrammes(progMap);
       } else {
+        // Pas encore de calendrier — initialiser vide
         const progMap = {};
-        uniqueMatieres.forEach(m => { progMap[m.id] = { id: null, contenu: '' }; });
+        uniqueMatieres.forEach(m => { progMap[m.id] = { ...VIDE }; });
         setProgrammes(progMap);
       }
     } catch {
@@ -82,9 +125,11 @@ export default function ProgrammeExamenBlanc() {
     } finally {
       setLoading(false);
     }
-  }, [selectedNiveau, selectedTrimestre]);
+  }, [selectedNiveau, selectedTrimestre, selectedClasse, niveaux]);
 
-  useEffect(() => { loadCalendrier(); }, [loadCalendrier]);
+  useEffect(() => {
+    loadCalendrier();
+  }, [loadCalendrier]);
 
   const handleSave = async () => {
     if (!dateDebut || !dateFin) {
@@ -95,11 +140,18 @@ export default function ProgrammeExamenBlanc() {
       setError('La date de fin doit être après la date de début.');
       return;
     }
+    for (const [matiereId, prog] of Object.entries(programmes)) {
+      const nom = matieresDuNiveau.find(m => String(m.id) === String(matiereId))?.nom;
+      if (!prog.date && (prog.debut || prog.fin)) { setError(`${nom} : choisissez aussi la date de l'épreuve.`); return; }
+      if (prog.date && (prog.date < dateDebut || prog.date > dateFin)) { setError(`${nom} : la date doit être comprise dans la session (${dateDebut} → ${dateFin}).`); return; }
+      if (prog.debut && prog.fin && prog.fin <= prog.debut) { setError(`${nom} : l'heure de fin doit être après l'heure de début.`); return; }
+    }
     setSaving(true);
     setError('');
     try {
       let cal = calendrier;
 
+      // Créer ou mettre à jour le calendrier
       if (!cal) {
         const res = await calendrierExamenBlancService.create({
           niveau: selectedNiveau,
@@ -113,59 +165,55 @@ export default function ProgrammeExamenBlanc() {
         await calendrierExamenBlancService.patch(cal.id, { date_debut: dateDebut, date_fin: dateFin });
       }
 
+      // Sauvegarder l'épreuve de chaque matière
       const updatedMap = { ...programmes };
       for (const [matiereId, prog] of Object.entries(programmes)) {
+        const data = { date_examen: prog.date || null, heure_debut: prog.debut || null, heure_fin: prog.fin || null };
         if (prog.id) {
-          await programmeExamenBlancService.patch(prog.id, { contenu: prog.contenu });
-        } else if (prog.contenu.trim()) {
-          const res = await programmeExamenBlancService.create({
-            calendrier: cal.id,
-            matiere: parseInt(matiereId),
-            contenu: prog.contenu,
-          });
-          updatedMap[matiereId] = { id: res.data.id, contenu: prog.contenu };
+          await programmeExamenBlancService.patch(prog.id, data);
+        } else if (prog.date) {
+          const res = await programmeExamenBlancService.create({ calendrier: cal.id, classe: parClasse ? selectedClasse : null, matiere: parseInt(matiereId), ...data });
+          updatedMap[matiereId] = { ...prog, id: res.data.id };
         }
       }
       setProgrammes(updatedMap);
       setSuccess("Calendrier d'Examen Blanc enregistré avec succès !");
       setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err?.response?.data?.detail || "Erreur lors de l'enregistrement.");
+      setError(err?.response?.data?.detail || [].concat(Object.values(err?.response?.data || {})[0] || [])[0] || 'Erreur lors de l\'enregistrement.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteProgramme = async (matiereId) => {
+  const viderEpreuve = async (matiereId) => {
     const prog = programmes[matiereId];
-    if (!prog?.id) {
-      setProgrammes(prev => ({ ...prev, [matiereId]: { id: null, contenu: '' } }));
-      return;
-    }
     try {
-      await programmeExamenBlancService.delete(prog.id);
-      setProgrammes(prev => ({ ...prev, [matiereId]: { id: null, contenu: '' } }));
+      if (prog?.id) await programmeExamenBlancService.patch(prog.id, { date_examen: null, heure_debut: null, heure_fin: null });
+      setProgrammes(prev => ({ ...prev, [matiereId]: { ...VIDE, id: prog?.id || null } }));
     } catch {
-      setError('Erreur lors de la suppression du programme.');
+      setError("Erreur lors de la suppression de l'épreuve.");
     }
   };
 
+  const modifier = (matiereId, champ, valeur) =>
+    setProgrammes(prev => ({ ...prev, [matiereId]: { ...(prev[matiereId] || VIDE), [champ]: valeur } }));
+
+  const parClasse = !!niveaux.find(n => String(n.id) === String(selectedNiveau))?.examen_blanc_par_classe;
   const niveauNom = niveaux.find(n => String(n.id) === String(selectedNiveau))?.nom || '';
   const trimestreObj = trimestres.find(t => String(t.id) === String(selectedTrimestre));
   const trimestreLabel = trimestreObj ? `${trimestreObj.annee_libelle || ''} — ${trimestreObj.nom}` : '';
 
-  const programmesRemplis = Object.values(programmes).filter(p => p.contenu?.trim()).length;
+  const programmesRemplis = Object.values(programmes).filter(aDate).length;
 
   return (
     <Box>
       <Box display="flex" alignItems="center" gap={1.5} mb={3}>
         <EventIcon sx={{ color: 'primary.main', fontSize: 30 }} />
         <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-            Programme des Examens Blancs
-          </Typography>
+          <Typography variant="h4" fontWeight="bold">Programme des Examens Blancs</Typography>
           <Typography variant="body2" color="text.secondary">
-            Définissez les dates et le programme par matière pour chaque niveau d'examen
+            Fixez la session, puis le jour et l'heure de l'examen blanc de chaque matière
           </Typography>
         </Box>
       </Box>
@@ -180,7 +228,7 @@ export default function ProgrammeExamenBlanc() {
             <Grid size={{ xs: 12, sm: 5 }}>
               <TextField select fullWidth label="Niveau (examen)" size="small"
                 value={selectedNiveau}
-                onChange={e => { setSelectedNiveau(e.target.value); setSelectedTrimestre(''); }}>
+                onChange={e => { setSelectedNiveau(e.target.value); setSelectedClasse(''); }}>
                 <MenuItem value=""><em>Sélectionner un niveau</em></MenuItem>
                 {niveaux.map(n => <MenuItem key={n.id} value={n.id}>{n.nom}</MenuItem>)}
               </TextField>
@@ -212,6 +260,7 @@ export default function ProgrammeExamenBlanc() {
         </CardContent>
       </Card>
 
+      {/* Contenu principal */}
       {!selectedNiveau || !selectedTrimestre ? (
         <Box textAlign="center" py={8} color="text.secondary">
           <EventIcon sx={{ fontSize: 64, opacity: 0.15, mb: 1 }} />
@@ -259,13 +308,30 @@ export default function ProgrammeExamenBlanc() {
           {/* Programmes par matière */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                {parClasse
+                  ? "Choisissez la classe : en Terminale, le programme est propre à chaque classe (matières et jours différents d'une série à l'autre)."
+                  : `Le programme est le même pour toutes les classes de ${niveauNom || 'ce niveau'}.`}
+              </Typography>
+              {!parClasse ? null : classes.length === 0 ? (
+                <Alert severity="info" sx={{ mb: 2 }}>Aucune classe dans ce niveau. Créez d&apos;abord les classes.</Alert>
+              ) : (
+                <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
+                  {classes.map(c => (
+                    <Chip key={c.id} clickable label={c.nom}
+                      color={String(c.id) === String(selectedClasse) ? 'primary' : 'default'}
+                      variant={String(c.id) === String(selectedClasse) ? 'filled' : 'outlined'}
+                      onClick={() => setSelectedClasse(c.id)} sx={{ fontWeight: 700 }} />
+                  ))}
+                </Box>
+              )}
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <MenuBookIcon color="primary" />
                   <Typography variant="h6" fontWeight="bold">
-                    Programmes par matière
+                    Jour et heure par matière{parClasse ? ` — ${classes.find(c => String(c.id) === String(selectedClasse))?.nom || ''}` : ''}
                   </Typography>
-                  <Chip label={`${programmesRemplis}/${matieresDuNiveau.length} remplis`}
+                  <Chip label={`${programmesRemplis}/${matieresDuNiveau.length} planifiées`}
                     size="small" color={programmesRemplis === matieresDuNiveau.length ? 'success' : 'default'} />
                 </Box>
               </Box>
@@ -279,37 +345,39 @@ export default function ProgrammeExamenBlanc() {
                   <Table size="small">
                     <TableHead sx={{ bgcolor: 'primary.main' }}>
                       <TableRow>
-                        <TableCell sx={{ color: 'white', width: 200 }}><strong>Matière</strong></TableCell>
-                        <TableCell sx={{ color: 'white' }}><strong>Programme à évaluer</strong></TableCell>
-                        <TableCell sx={{ color: 'white', width: 60 }} align="center"><strong>Eff.</strong></TableCell>
+                        <TableCell sx={{ color: 'white' }}><strong>Matière</strong></TableCell>
+                        <TableCell sx={{ color: 'white', width: 190 }}><strong>Date</strong></TableCell>
+                        <TableCell sx={{ color: 'white', width: 130 }}><strong>Début</strong></TableCell>
+                        <TableCell sx={{ color: 'white', width: 130 }}><strong>Fin</strong></TableCell>
+                        <TableCell sx={{ color: 'white', width: 60 }} align="center" />
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {matieresDuNiveau.map(matiere => {
-                        const prog = programmes[matiere.id] || { id: null, contenu: '' };
+                        const prog = programmes[matiere.id] || VIDE;
                         return (
                           <TableRow key={matiere.id} hover>
                             <TableCell>
                               <Typography fontWeight="bold" variant="body2">{matiere.nom}</Typography>
-                              {prog.id && <Chip label="Enregistré" size="small" color="success" sx={{ mt: 0.5 }} />}
+                              {prog.id && prog.date && <Chip label="Enregistré" size="small" color="success" sx={{ mt: 0.5 }} />}
                             </TableCell>
                             <TableCell>
-                              <TextField
-                                fullWidth multiline rows={2} size="small"
-                                placeholder="Ex: Chapitres 1 à 3, Thèmes traités en cours..."
-                                value={prog.contenu}
-                                onChange={e => setProgrammes(prev => ({
-                                  ...prev,
-                                  [matiere.id]: { ...prev[matiere.id], contenu: e.target.value }
-                                }))}
-                                variant="outlined"
-                              />
+                              <TextField fullWidth type="date" size="small" value={prog.date}
+                                inputProps={{ min: dateDebut || undefined, max: dateFin || undefined }}
+                                onChange={e => modifier(matiere.id, 'date', e.target.value)} />
+                            </TableCell>
+                            <TableCell>
+                              <TextField fullWidth type="time" size="small" value={prog.debut} disabled={!prog.date}
+                                onChange={e => modifier(matiere.id, 'debut', e.target.value)} />
+                            </TableCell>
+                            <TableCell>
+                              <TextField fullWidth type="time" size="small" value={prog.fin} disabled={!prog.date}
+                                onChange={e => modifier(matiere.id, 'fin', e.target.value)} />
                             </TableCell>
                             <TableCell align="center">
-                              {prog.contenu?.trim() && (
-                                <Tooltip title="Vider le programme">
-                                  <IconButton size="small" color="error"
-                                    onClick={() => handleDeleteProgramme(matiere.id)}>
+                              {(prog.date || prog.debut || prog.fin) && (
+                                <Tooltip title="Effacer le jour et l'heure">
+                                  <IconButton size="small" color="error" onClick={() => viderEpreuve(matiere.id)}>
                                     <DeleteIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
@@ -325,6 +393,17 @@ export default function ProgrammeExamenBlanc() {
             </CardContent>
           </Card>
 
+          {/* Programmer les évaluations (directeur) */}
+          <Box display="flex" justifyContent="flex-end" gap={1} flexWrap="wrap" mb={1.5}>
+            <Button variant="outlined" disabled={generation || !selectedTrimestre} onClick={() => genererEvaluations(true)}>
+              Créer les examens blancs de ce niveau
+            </Button>
+            <Button variant="outlined" disabled={generation || !selectedTrimestre} onClick={() => genererEvaluations(false)}>
+              Créer les examens blancs de toute l’école
+            </Button>
+          </Box>
+
+          {/* Bouton Enregistrer */}
           <Box display="flex" justifyContent="flex-end">
             <Button
               variant="contained" size="large" startIcon={<SaveIcon />}
@@ -332,6 +411,9 @@ export default function ProgrammeExamenBlanc() {
               {saving ? 'Enregistrement...' : calendrier ? 'Mettre à jour' : 'Créer le calendrier'}
             </Button>
           </Box>
+
+          {/* Publication : invisible pour les familles tant que le directeur ne publie pas */}
+          <PublicationCalendrier calendrier={calendrier} service={calendrierExamenBlancService} onChange={setCalendrier} />
         </>
       )}
     </Box>

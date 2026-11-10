@@ -4,10 +4,8 @@ import Stack from '@mui/material/Stack';
 // project imports
 import NavigationDrawer from './Navigation';
 import SimpleBar from 'components/third-party/SimpleBar';
-import { AppBar, CardMedia, Toolbar } from '@mui/material';
-
-// assets
-import logo from 'assets/images/logo.svg';
+import { AppBar, Toolbar } from '@mui/material';
+import MarqueEcole from 'components/MarqueEcole';
 
 // ==============================|| DRAWER - CONTENT ||============================== //
 
@@ -17,8 +15,8 @@ export default function DrawerContent() {
   return (
     <>
       <AppBar sx={{ position: 'absolute', display: { xs: 'block', lg: 'none' } }}>
-        <Toolbar sx={{ justifyContent: 'center' }}>
-          <CardMedia component="img" image={logo} alt="logo" sx={{ width: 138 }} />
+        <Toolbar>
+          <MarqueEcole largeurMax={240} />
         </Toolbar>
       </AppBar>
       <Toolbar sx={{ zIndex: -1 }} />

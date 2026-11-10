@@ -1,0 +1,11 @@
+{
+  "name": "gestion-ecole-frontend",
+  "private": true,
+  "description": "Pont vers l'app React/Vite (materially-free-react-admin-template). Le vrai package.json est dans le sous-dossier.",
+  "scripts": {
+    "postinstall": "npm install --prefix materially-free-react-admin-template",
+    "start": "npm start --prefix materially-free-react-admin-template",
+    "build": "npm run build --prefix materially-free-react-admin-template",
+    "preview": "npm run preview --prefix materially-free-react-admin-template"
+  }
+}

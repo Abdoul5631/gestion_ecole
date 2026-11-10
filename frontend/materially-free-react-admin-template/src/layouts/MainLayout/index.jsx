@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 
 // material-ui
@@ -10,7 +10,12 @@ import Box from '@mui/material/Box';
 // project imports
 import Drawer from './Drawer';
 import Header from './Header';
+import AlerteMessage from 'components/AlerteMessage';
+import BandeauAnnonces from 'components/BandeauAnnonces';
 import Breadcrumbs from 'components/Breadcrumbs';
+import ChangePasswordDialog from 'components/ChangePasswordDialog';
+import authService from 'services/auth';
+import useStackedTables from 'hooks/useStackedTables';
 
 import { DRAWER_WIDTH } from 'config';
 import { handlerDrawerOpen, useGetMenuMaster } from 'states/menu';
@@ -19,9 +24,11 @@ import { handlerDrawerOpen, useGetMenuMaster } from 'states/menu';
 
 export default function MainLayout() {
   const upLG = useMediaQuery((theme) => theme.breakpoints.up('lg'));
+  useStackedTables();
 
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
+  const [forcePwd, setForcePwd] = useState(authService.mustChangePassword());
 
   useEffect(() => {
     handlerDrawerOpen(upLG);
@@ -34,6 +41,7 @@ export default function MainLayout() {
   return (
     <Stack direction="row" width={1}>
       <Header />
+      <AlerteMessage />
       {drawer}
       <Box
         component="main"
@@ -45,8 +53,14 @@ export default function MainLayout() {
       >
         <Toolbar />
         <Breadcrumbs />
+        <BandeauAnnonces />
         <Outlet />
       </Box>
+      <ChangePasswordDialog
+        open={forcePwd}
+        required
+        onSuccess={() => setForcePwd(false)}
+      />
     </Stack>
   );
 }

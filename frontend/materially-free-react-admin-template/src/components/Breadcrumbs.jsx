@@ -14,7 +14,7 @@ import menuItems from 'menu-items';
 //assets
 import HomeTwoToneIcon from '@mui/icons-material/HomeTwoTone';
 
-const homeBreadcrumb = { title: 'Home', url: APP_DEFAULT_PATH, icon: HomeTwoToneIcon };
+const homeBreadcrumb = { title: 'Accueil', url: APP_DEFAULT_PATH, icon: HomeTwoToneIcon };
 const flexStyle = { display: 'flex', alignItems: 'center', gap: 0.5 };
 
 // ==============================|| BREADCRUMBS ||============================== //

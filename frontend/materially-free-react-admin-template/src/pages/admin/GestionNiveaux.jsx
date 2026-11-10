@@ -5,7 +5,7 @@ import {
   TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, CircularProgress, TextField, Dialog, DialogTitle,
   DialogContent, DialogActions, Alert, IconButton, Tooltip,
-  InputAdornment, Chip, FormControlLabel, Checkbox
+  InputAdornment, Chip, FormControlLabel, Checkbox, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,6 +23,7 @@ export default function GestionNiveaux() {
   const [editOpen, setEditOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [filterActif, setFilterActif] = useState('all');
   const [nom, setNom] = useState('');
   const [isClasseExamen, setIsClasseExamen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -32,17 +33,21 @@ export default function GestionNiveaux() {
 
   const fetchData = () => {
     setLoading(true);
-    niveauService.getAll()
-      .then(res => setNiveaux(res.data))
+    niveauService.getAll('?inclure_suspendus=1')
+      .then(res => setNiveaux(Array.isArray(res.data) ? res.data : res.data.results ?? []))
       .catch(() => setError('Erreur de chargement'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const filtered = niveaux.filter(n =>
-    n.nom.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = niveaux.filter(n => {
+    const matchSearch = n.nom.toLowerCase().includes(search.toLowerCase());
+    const matchActif = filterActif === 'all'
+      || (filterActif === 'active' && n.is_active)
+      || (filterActif === 'suspended' && !n.is_active);
+    return matchSearch && matchActif;
+  });
 
   const handleCreate = async () => {
     setSaving(true);
@@ -90,14 +95,20 @@ export default function GestionNiveaux() {
 
   const handleToggleSuspend = async () => {
     try {
-      await niveauService.patch(selected.id, { is_active: !selected.is_active });
-      const msg = selected.is_active ? 'Niveau suspendu.' : 'Niveau réactivé !';
-      setSuccess(msg);
+      if (selected.is_active) {
+        const nb = selected.nb_eleves || 0;
+        if (nb > 0 && !window.confirm('Ces élèves restent inscrits cette année. Suspendre quand même ?')) return;
+        await niveauService.delete(selected.id);
+        setSuccess('Niveau suspendu.');
+      } else {
+        await niveauService.reactiver(selected.id);
+        setSuccess('Niveau réactivé !');
+      }
       setSuspendOpen(false);
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
-    } catch {
-      setError('Erreur lors de la modification.');
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Erreur lors de la modification.');
       setSuspendOpen(false);
     }
   };
@@ -129,10 +140,18 @@ export default function GestionNiveaux() {
 
       <Card>
         <CardContent>
-          <TextField fullWidth placeholder="Rechercher un niveau..."
-            value={search} onChange={e => setSearch(e.target.value)} sx={{ mb: 3 }}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-          />
+          <Box display="flex" gap={2} mb={3} flexWrap="wrap">
+            <TextField fullWidth placeholder="Rechercher un niveau..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+            />
+            <TextField select size="small" label="Afficher" value={filterActif}
+              onChange={e => setFilterActif(e.target.value)} sx={{ minWidth: 160 }}>
+              <MenuItem value="all">Tous</MenuItem>
+              <MenuItem value="active">Actifs</MenuItem>
+              <MenuItem value="suspended">Suspendus</MenuItem>
+            </TextField>
+          </Box>
           {loading ? (
             <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
           ) : filtered.length === 0 ? (
@@ -247,7 +266,9 @@ export default function GestionNiveaux() {
                 Suspendre le niveau <strong>{selected?.nom}</strong> ?
               </Typography>
               <Alert severity="warning" sx={{ mt: 2 }}>
-                Le niveau sera marqué comme suspendu. Les classes et inscriptions existantes restent conservées.
+                {(selected?.nb_eleves || 0) > 0
+                  ? `${selected.nb_eleves} élève(s) restent inscrits cette année. Notes et historique conservés.`
+                  : 'Les classes et inscriptions existantes restent conservées.'}
               </Alert>
             </>
           ) : (
@@ -265,6 +286,7 @@ export default function GestionNiveaux() {
           </Button>
         </DialogActions>
       </Dialog>
+
     </Box>
   );
 }

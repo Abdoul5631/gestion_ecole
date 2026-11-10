@@ -9,15 +9,18 @@ class Command(BaseCommand):
     help = "Cree les niveaux, une annee scolaire et les trimestres"
 
     def handle(self, *args, **options):
+        from parametres.models import Parametres
         from scolarite.models import Niveau, AnneeScolaire, Trimestre
 
+        ecole = Parametres.get()
         self.stdout.write("=== Initialisation Gestion Ecole ===")
+        self.stdout.write(f"École : {ecole.nom_ecole}")
 
         # 1. NIVEAUX
         niveaux = ['6eme', '5eme', '4eme', '3eme', '2nde', '1ere A', 'Terminale A']
         nb_n = 0
         for nom in niveaux:
-            obj, created = Niveau.objects.get_or_create(nom=nom)
+            obj, created = Niveau.objects.get_or_create(nom=nom, ecole=ecole)
             if created:
                 nb_n += 1
                 self.stdout.write(f"  Niveau cree : {nom}")
@@ -26,18 +29,26 @@ class Command(BaseCommand):
         self.stdout.write(f"Niveaux : {nb_n} cree(s)")
 
         # 2. ANNEE SCOLAIRE
-        annee, created = AnneeScolaire.objects.get_or_create(libelle='2024-2025')
+        from scolarite.utils import annee_scolaire_courante
+        libelle, _ = annee_scolaire_courante()
+        annee, created = AnneeScolaire.objects.get_or_create(
+            libelle=libelle, ecole=ecole, defaults={'is_active': True}
+        )
+        annee.is_active = True
+        annee.ecole = ecole
+        annee.save()
+        AnneeScolaire.objects.filter(ecole=ecole).exclude(pk=annee.pk).update(is_active=False)
         if created:
-            self.stdout.write("Annee scolaire creee : 2024-2025")
+            self.stdout.write(f"Annee scolaire creee : {libelle}")
         else:
-            self.stdout.write("Annee scolaire existante : 2024-2025")
+            self.stdout.write(f"Annee scolaire existante : {libelle}")
 
         # 3. TRIMESTRES
         trimestres = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3']
         nb_t = 0
         for nom in trimestres:
             obj, created = Trimestre.objects.get_or_create(
-                nom=nom, annee_scolaire=annee
+                nom=nom, annee_scolaire=annee, defaults={'ecole': ecole}
             )
             if created:
                 nb_t += 1

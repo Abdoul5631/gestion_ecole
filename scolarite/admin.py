@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import AnneeScolaire, Niveau, Classe, Trimestre, Inscription
+from .models import (
+    AnneeScolaire, Niveau, Classe, Trimestre, Inscription,
+    DemandeInscription, ResultatExamenNational, PassageAnnee,
+)
 
 
 @admin.register(AnneeScolaire)
@@ -29,6 +32,25 @@ class TrimestreAdmin(admin.ModelAdmin):
 
 @admin.register(Inscription)
 class InscriptionAdmin(admin.ModelAdmin):
-    list_display = ['eleve', 'classe', 'date_inscription']
-    list_filter = ['classe__niveau']
+    list_display = ['eleve', 'classe', 'annee_scolaire', 'redoublant', 'statut', 'date_inscription']
+    list_filter = ['annee_scolaire', 'classe__niveau', 'redoublant', 'statut']
     search_fields = ['eleve__nom', 'eleve__prenom', 'eleve__matricule']
+
+
+@admin.register(DemandeInscription)
+class DemandeInscriptionAdmin(admin.ModelAdmin):
+    list_display = ['prenom', 'nom', 'niveau_souhaite', 'statut', 'date_depot', 'ecole', 'is_active']
+    list_filter = ['statut', 'ecole', 'is_active']
+    search_fields = ['nom', 'prenom', 'nom_parent', 'telephone_parent']
+
+
+@admin.register(ResultatExamenNational)
+class ResultatExamenNationalAdmin(admin.ModelAdmin):
+    list_display = ['eleve', 'examen', 'annee_scolaire', 'admis', 'serie_2nde']
+    list_filter = ['examen', 'annee_scolaire', 'admis']
+    search_fields = ['eleve__nom', 'eleve__prenom', 'eleve__matricule']
+
+
+@admin.register(PassageAnnee)
+class PassageAnneeAdmin(admin.ModelAdmin):
+    list_display = ['annee_source', 'annee_cible', 'date_lancement', 'admis', 'redoublants', 'diplomes']

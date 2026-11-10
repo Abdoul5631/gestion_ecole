@@ -1,3 +1,4 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useEffect, useState } from 'react';
 import api from 'services/api';
 import {
@@ -11,6 +12,7 @@ import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { classeService, eleveService, trimestreService, niveauService, parametresService, deliberationService, getResults } from 'services/api';
 
+import ScrollableDoc from 'components/ScrollableDoc';
 function fmt(val) {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'number') return val.toFixed(2);
@@ -27,7 +29,11 @@ const STATUT_LABELS = { ADMIS: 'Admis', DEUXIEME_TOUR: 'Second Tour', AJOURNE: '
 const STATUT_COLORS = { ADMIS: '#006600', DEUXIEME_TOUR: '#e65100', AJOURNE: '#cc0000' };
 
 // ─── Classement Examen Blanc imprimable pour tout un niveau (admis / second tour / ajournés) ─
-export function ClassementExamenBlancPrint({ data, ecole = {} }) {
+export function ClassementExamenBlancPrint(props) {
+  return <ScrollableDoc><ClassementExamenBlancPrintDoc {...props} /></ScrollableDoc>;
+}
+
+function ClassementExamenBlancPrintDoc({ data, ecole = {} }) {
   const tdStyle = { border: '1px solid #333', padding: '3px 6px', fontSize: '12px', textAlign: 'center' };
   const thStyle = { ...tdStyle, background: '#f0f0f0', fontWeight: 'bold' };
   const leftTd = { ...tdStyle, textAlign: 'left' };
@@ -105,7 +111,11 @@ export function ClassementExamenBlancPrint({ data, ecole = {} }) {
 }
 
 // ─── Composant bulletin imprimable (Examen Blanc uniquement) ─
-export function BulletinExamenBlancPrint({ data, ecole = {} }) {
+export function BulletinExamenBlancPrint(props) {
+  return <ScrollableDoc><BulletinExamenBlancPrintDoc {...props} /></ScrollableDoc>;
+}
+
+function BulletinExamenBlancPrintDoc({ data, ecole = {} }) {
   const tdStyle = { border: '1px solid #333', padding: '3px 6px', fontSize: '12px', textAlign: 'center' };
   const thStyle = { ...tdStyle, background: '#f0f0f0', fontWeight: 'bold' };
   const leftTd = { ...tdStyle, textAlign: 'left' };
@@ -252,7 +262,7 @@ export default function BulletinExamenBlanc() {
   const [delibererLoading, setDelibererLoading] = useState(false);
 
   useEffect(() => {
-    trimestreService.getAll().then(res => setTrimestres(res.data));
+    trimestreService.getAll().then(res => { setTrimestres(trimestresEnCours(res.data)); setSelectedTrimestre(prev => prev || idTrimestreParDefaut(res.data)); });
     parametresService.get().then(res => setEcole(res.data)).catch(() => {});
     classeService.getAll().then(res => {
       const { items } = getResults(res);

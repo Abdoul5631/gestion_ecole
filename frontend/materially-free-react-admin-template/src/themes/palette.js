@@ -1,6 +1,9 @@
 // ==============================|| DEFAULT - PALETTE ||============================== //
 
-export default function palette(mode) {
+import { nuances } from 'utils/couleurs';
+
+// couleurEcole : couleur principale de l'école (tirée de son logo) ; sinon le bleu d'origine
+export default function palette(mode, couleurEcole) {
   const lightPalette = {
     common: {
       black: '#232b38'
@@ -69,6 +72,12 @@ export default function palette(mode) {
       selected: '#3366ff'
     }
   };
+
+  if (couleurEcole) {
+    const p = nuances(couleurEcole);
+    lightPalette.primary = p;
+    lightPalette.menu = { hover: p.lighter, selected: p.main };
+  }
 
   return {
     mode,

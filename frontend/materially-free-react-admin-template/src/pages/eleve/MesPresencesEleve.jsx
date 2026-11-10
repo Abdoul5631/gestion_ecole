@@ -9,12 +9,15 @@ import {
   CircularProgress, Chip, Alert, Grid
 } from '@mui/material';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import { readThrough, CacheKeys, NEVER_CACHED_MSG } from 'offline/cacheStore';
 
+import { estEnLigne } from 'offline/reseau';
 export default function MesPresencesEleve() {
   const [presences, setPresences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [eleveInfo, setEleveInfo] = useState(null);
   const [eleveDirectId, setEleveDirectId] = useState(null);
+  const [error, setError] = useState('');
   const role = authService.getRole();
   const { enfants, selectedId: enfantId, setSelectedId, loading: loadingEnfants } = useSelectedEnfant();
 
@@ -22,37 +25,63 @@ export default function MesPresencesEleve() {
 
   useEffect(() => {
     if (role !== 'PARENT') {
-      api.get('/auth/me/').then(res => { if (res.data.eleve) setEleveDirectId(res.data.eleve); });
+      readThrough(CacheKeys.authMe(), async () => {
+        const res = await api.get('/auth/me/');
+        return res.data;
+      }).then((r) => { if (r.data?.eleve) setEleveDirectId(r.data.eleve); });
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     if (role === 'PARENT' && loadingEnfants) return;
     if (!eleveId) { setLoading(false); setPresences([]); setEleveInfo(null); return; }
     setLoading(true);
-    api.get(`/eleves/${eleveId}/`).then(r => setEleveInfo(r.data));
-    api.get(`/eleves/${eleveId}/presences/`)
-      .then(r => setPresences(r.data))
+    setError('');
+    readThrough(CacheKeys.presencesEleve(eleveId), async () => {
+      const [info, r] = await Promise.all([
+        api.get(`/eleves/${eleveId}/`),
+        api.get(`/eleves/${eleveId}/presences/`),
+      ]);
+      const cours = Array.isArray(r.data) ? r.data : r.data?.results || [];
+      return {
+        eleveInfo: info.data,
+        presences: [...cours].sort((x, y) => String(y.date).localeCompare(String(x.date))),
+      };
+    })
+      .then((res) => {
+        if (res.neverCached) {
+          setError(NEVER_CACHED_MSG);
+          setPresences([]);
+          setEleveInfo(null);
+        } else {
+          setEleveInfo(res.data?.eleveInfo || null);
+          setPresences(res.data?.presences || []);
+        }
+      })
+      .catch(() => setError(estEnLigne() ? 'Erreur de chargement' : NEVER_CACHED_MSG))
       .finally(() => setLoading(false));
-  }, [eleveId, loadingEnfants]);
+  }, [eleveId, loadingEnfants, role]);
 
   const presents = presences.filter(p => p.statut === 'PRESENT').length;
-  const absents = presences.filter(p => p.statut === 'ABSENT').length;
+  const absents = presences.filter(p => p.statut === 'ABSENT' && !p.justifiee).length;
   const retards = presences.filter(p => p.statut === 'RETARD').length;
-  const excuses = presences.filter(p => p.statut === 'EXCUSE').length;
+  const justifiees = presences.filter(p => (p.statut === 'ABSENT' && p.justifiee) || p.statut === 'EXCUSE').length;
   const taux = presences.length > 0 ? Math.round((presents / presences.length) * 100) : 0;
 
-  const statutColor = s => {
+  const statutColor = (s, justifiee) => {
+    if (s === 'ABSENT' && justifiee) return 'info';
     if (s === 'PRESENT') return 'success';
     if (s === 'ABSENT') return 'error';
     if (s === 'RETARD') return 'warning';
     return 'info';
   };
 
-  const statutLabel = s => {
+  const statutLabel = (s, justifiee) => {
+    if (s === 'ABSENT' && justifiee) return 'Absence justifiée';
     if (s === 'PRESENT') return 'Présent';
     if (s === 'ABSENT') return 'Absent';
     if (s === 'RETARD') return 'En retard';
+    if (s === 'JUSTIFIE') return 'Justifié';
     return 'Excusé';
   };
 
@@ -67,11 +96,11 @@ export default function MesPresencesEleve() {
       )}
       {role === 'PARENT' && !loadingEnfants && enfants.length === 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Aucun enfant lié à votre compte. Contactez l'administration pour lier vos enfants.
+          Aucun enfant lié à votre compte. Contactez l&apos;administration pour lier vos enfants.
         </Alert>
       )}
+      {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {/* Infos élève */}
       {eleveInfo && (
         <Card sx={{ mb: 2, background: 'linear-gradient(135deg, #2e7d32, #1b5e20)', color: 'white' }}>
           <CardContent>
@@ -90,14 +119,13 @@ export default function MesPresencesEleve() {
         </Card>
       )}
 
-      {/* Stats */}
-      {!loading && (
+      {!loading && !error && (
         <Grid container spacing={2} sx={{ mb: 2 }}>
           {[
             { label: 'Présences', value: presents, color: 'success' },
-            { label: 'Absences', value: absents, color: 'error' },
+            { label: 'Absences non justifiées', value: absents, color: 'error' },
+            { label: 'Absences justifiées', value: justifiees, color: 'info' },
             { label: 'Retards', value: retards, color: 'warning' },
-            { label: 'Excusés', value: excuses, color: 'info' },
           ].map(stat => (
             <Grid size={{ xs: 6, md: 3 }} key={stat.label}>
               <Card sx={{ borderLeft: `5px solid ${stat.color}.main` }}>
@@ -113,9 +141,11 @@ export default function MesPresencesEleve() {
         </Grid>
       )}
 
-      <Alert severity={taux >= 80 ? 'success' : taux >= 60 ? 'warning' : 'error'} sx={{ mb: 2 }}>
-        Taux de présence : <strong>{taux}%</strong> sur {presences.length} séances
-      </Alert>
+      {!error && (
+        <Alert severity={taux >= 80 ? 'success' : taux >= 60 ? 'warning' : 'error'} sx={{ mb: 2 }}>
+          Taux de présence : <strong>{taux}%</strong> sur {presences.length} séances
+        </Alert>
+      )}
 
       <Card>
         <CardContent>
@@ -143,9 +173,9 @@ export default function MesPresencesEleve() {
                         <TableCell>{p.date}</TableCell>
                         <TableCell>{p.matiere_nom || '—'}</TableCell>
                         <TableCell>
-                          <Chip label={statutLabel(p.statut)} color={statutColor(p.statut)} size="small" />
+                          <Chip label={statutLabel(p.statut, p.justifiee)} color={statutColor(p.statut, p.justifiee)} size="small" />
                         </TableCell>
-                        <TableCell>{p.motif || '—'}</TableCell>
+                        <TableCell>{p.motif_justification || p.motif || '—'}</TableCell>
                       </TableRow>
                     ))
                   )}

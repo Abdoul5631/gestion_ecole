@@ -11,6 +11,7 @@ export default function useHasExamenBlancAccess() {
   const role = authService.getRole();
 
   useEffect(() => {
+    if (role === 'SUPER_ADMIN' || authService.isPlateforme()) { setHasAccess(false); setLoading(false); return; }
     if (role === 'ADMIN') { setHasAccess(true); setLoading(false); return; }
 
     const classeEstExamen = async (classeId) => {

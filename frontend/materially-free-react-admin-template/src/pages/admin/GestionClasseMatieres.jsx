@@ -8,6 +8,7 @@ import {
   InputAdornment
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
 import PauseCircleIcon from '@mui/icons-material/PauseCircle';
@@ -26,6 +27,9 @@ export default function GestionClasseMatieres() {
   const [editOpen, setEditOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [copieOpen, setCopieOpen] = useState(false);
+  const [copie, setCopie] = useState({ source: '', classes: [] });
+  const [erreurCopie, setErreurCopie] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
@@ -135,10 +139,16 @@ export default function GestionClasseMatieres() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={1} flexWrap="wrap">
         <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Affectation Cours — Classes</Typography>
-        <Button size="small" variant="contained" startIcon={<AddIcon />}
-          onClick={() => { setError(''); setForm(initForm); setOpen(true); }}>
-          Nouvelle Affectation
-        </Button>
+        <Box display="flex" gap={1} flexWrap="wrap">
+          <Button size="small" variant="outlined" startIcon={<ContentCopyIcon />}
+            onClick={() => { setErreurCopie(''); setCopie({ source: '', classes: [] }); setCopieOpen(true); }}>
+            Copier d&apos;une classe
+          </Button>
+          <Button size="small" variant="contained" startIcon={<AddIcon />}
+            onClick={() => { setError(''); setForm(initForm); setOpen(true); }}>
+            Nouvelle Affectation
+          </Button>
+        </Box>
       </Box>
 
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
@@ -304,6 +314,39 @@ export default function GestionClasseMatieres() {
           <Button variant="contained" onClick={handleSave} disabled={!form.classe || !form.matiere}>
             Affecter
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Copier les matières et coefficients d'une classe vers d'autres */}
+      <Dialog open={copieOpen} onClose={() => setCopieOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>Copier les matières d&apos;une classe</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Alert severity="info" sx={{ mb: 2, mt: 1 }}>
+            Les matières et leurs coefficients sont copiés vers les classes choisies. Les professeurs ne sont pas copiés : vous les affectez ensuite classe par classe.
+            Une matière déjà présente dans la classe de destination reste telle quelle.
+          </Alert>
+          {erreurCopie && <Alert severity="error" sx={{ mb: 2 }}>{erreurCopie}</Alert>}
+          <TextField select fullWidth label="Classe à copier" value={copie.source} sx={{ mb: 2 }}
+            onChange={e => setCopie({ source: e.target.value, classes: copie.classes.filter(c => c !== e.target.value) })}>
+            {classes.map(c => <MenuItem key={c.id} value={c.id}>{c.nom_complet}</MenuItem>)}
+          </TextField>
+          <TextField select fullWidth label="Copier vers (une ou plusieurs classes)" value={copie.classes}
+            SelectProps={{ multiple: true }} onChange={e => setCopie({ ...copie, classes: e.target.value })}>
+            {classes.filter(c => c.id !== copie.source).map(c => <MenuItem key={c.id} value={c.id}>{c.nom_complet}</MenuItem>)}
+          </TextField>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setCopieOpen(false)} color="inherit">Annuler</Button>
+          <Button variant="contained" disabled={!copie.source || !copie.classes.length} onClick={async () => {
+            try {
+              const res = await classeMatiereService.copier({ source: copie.source, classes: copie.classes });
+              setCopieOpen(false);
+              setSuccess(res.data.message);
+              fetchData();
+            } catch (e) {
+              setErreurCopie(e.response?.data?.detail || 'La copie a échoué.');
+            }
+          }}>Copier</Button>
         </DialogActions>
       </Dialog>
 

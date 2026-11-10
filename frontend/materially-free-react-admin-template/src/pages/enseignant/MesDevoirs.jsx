@@ -1,3 +1,4 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Typography, Grid, Button,
@@ -14,6 +15,8 @@ import useIsMobile from 'hooks/useIsMobile';
 
 const TYPE_COLORS = { DEVOIR1: 'primary', DEVOIR2: 'secondary', COMPOSITION: 'warning', EXAMEN_BLANC: 'error' };
 const TYPE_LABELS = { DEVOIR1: 'Devoir 1', DEVOIR2: 'Devoir 2', COMPOSITION: 'Composition', EXAMEN_BLANC: 'Examen Blanc' };
+// Cette page ne traite que les devoirs (2 par trimestre) : le directeur programme compositions et examens blancs
+const TYPES_DEVOIR = ['DEVOIR1', 'DEVOIR2'];
 
 const initForm = { type: 'DEVOIR1', coefficient: 1, trimestre: '', classe_matiere: '', date: '' };
 
@@ -49,7 +52,9 @@ export default function MesDevoirs() {
       trimestreService.getAll()
     ]).then(([resCM, resT]) => {
       setClasseMatieres(resCM.data);
-      setTrimestres(resT.data);
+      setTrimestres(trimestresEnCours(resT.data));
+      setFilterTrimestre(prev => prev || idTrimestreParDefaut(resT.data));
+      setForm(f => ({ ...f, trimestre: f.trimestre || idTrimestreParDefaut(resT.data) }));
     }).catch(() => setError('Erreur de chargement des données de référence.'));
 
     // Évaluations séparément
@@ -93,10 +98,13 @@ export default function MesDevoirs() {
     ? classeMatieres.filter(cm => String(cm.classe) === String(form.classe_matiere_classe))
     : classeMatieres;
 
-  const formClasseIsExamen = !!classeMatieres.find(cm => String(cm.classe) === String(form.classe_matiere_classe))?.niveau_is_classe_examen;
-  const typeOptionsForm = Object.entries(TYPE_LABELS).filter(([k]) => k !== 'EXAMEN_BLANC' || formClasseIsExamen);
+  // L'enseignant ne programme que les devoirs, une seule fois par trimestre ; compositions et examens blancs : directeur
+  const typeOptionsForm = [['DEVOIR1', TYPE_LABELS.DEVOIR1], ['DEVOIR2', TYPE_LABELS.DEVOIR2]];
+  const dejaProgramme = (type) => evaluations.some(ev => String(ev.classe_matiere) === String(form.classe_matiere)
+    && String(ev.trimestre) === String(form.trimestre) && ev.type === type);
 
   const filtered = evaluations.filter(ev => {
+    if (!TYPES_DEVOIR.includes(ev.type)) return false;
     const cm = classeMatieres.find(c => c.id === ev.classe_matiere);
     const matchClasse = !filterClasse || (cm && String(cm.classe) === String(filterClasse));
     const matchMatiere = !filterMatiere || (cm && String(cm.matiere) === String(filterMatiere));
@@ -122,7 +130,7 @@ export default function MesDevoirs() {
       await evaluationService.create(payload);
       setSuccess('Évaluation créée !');
       setOpen(false);
-      setForm(initForm);
+      setForm({ ...initForm, trimestre: idTrimestreParDefaut(trimestres) });
       fetchData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -158,12 +166,17 @@ export default function MesDevoirs() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={1} flexWrap="wrap">
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Mes Devoirs & Évaluations</Typography>
+        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Mes devoirs</Typography>
         <Button variant="contained" size="small" startIcon={<AddIcon />}
-          onClick={() => { setError(''); setForm(initForm); setOpen(true); }}>
-          Nouvelle Évaluation
+          onClick={() => { setError(''); setForm({ ...initForm, trimestre: idTrimestreParDefaut(trimestres) }); setOpen(true); }}>
+          Nouveau devoir
         </Button>
       </Box>
+
+      <Alert severity="info" icon={false} sx={{ mb: 2, py: 0.5 }}>
+        Vous programmez <strong>deux devoirs par trimestre</strong> et par matière (Devoir 1 et Devoir 2). Les compositions et les examens blancs
+        ne sont pas des devoirs : c’est le directeur qui les programme.
+      </Alert>
 
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
       {error && !open && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -191,7 +204,7 @@ export default function MesDevoirs() {
               <TextField select fullWidth label="Type" size="small"
                 value={filterType} onChange={e => setFilterType(e.target.value)}>
                 <MenuItem value="">Tous les types</MenuItem>
-                {Object.entries(TYPE_LABELS).map(([k, v]) => (
+                {Object.entries(TYPE_LABELS).filter(([k]) => TYPES_DEVOIR.includes(k)).map(([k, v]) => (
                   <MenuItem key={k} value={k}>{v}</MenuItem>
                 ))}
               </TextField>
@@ -230,7 +243,7 @@ export default function MesDevoirs() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        Aucune évaluation trouvée.
+                        Aucun devoir trouvé.
                       </TableCell>
                     </TableRow>
                   ) : filtered.map(ev => (
@@ -276,14 +289,14 @@ export default function MesDevoirs() {
             </TableContainer>
           )}
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            {filtered.length} évaluation(s)
+            {filtered.length} devoir(s)
           </Typography>
         </CardContent>
       </Card>
 
       {/* Dialog Création */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>Nouvelle Évaluation</DialogTitle>
+        <DialogTitle>Nouveau devoir</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
@@ -311,7 +324,9 @@ export default function MesDevoirs() {
                 value={form.type}
                 onChange={e => setForm({ ...form, type: e.target.value })}>
                 {typeOptionsForm.map(([k, v]) => (
-                  <MenuItem key={k} value={k}>{v}</MenuItem>
+                  <MenuItem key={k} value={k} disabled={dejaProgramme(k)}>
+                    {v}{dejaProgramme(k) ? ' — déjà programmé' : ''}
+                  </MenuItem>
                 ))}
               </TextField>
             </Grid>
@@ -340,7 +355,7 @@ export default function MesDevoirs() {
                 {calendrierCompo ? (() => {
                   // Programme de la matière de ce cours
                   const cm = classeMatieres.find(c => String(c.id) === String(form.classe_matiere));
-                  const prog = calendrierCompo.programmes?.find(p => p.matiere === cm?.matiere);
+                  const prog = calendrierCompo.programmes?.find(p => p.matiere === cm?.matiere && (!p.classe || p.classe === cm?.classe));
                   return (
                     <Alert severity="info" sx={{ borderRadius: 2 }}>
                       <Typography variant="body2" fontWeight="bold" mb={0.5}>
@@ -349,9 +364,10 @@ export default function MesDevoirs() {
                       <Typography variant="body2">
                         📅 Du <strong>{new Date(calendrierCompo.date_debut).toLocaleDateString('fr-FR')}</strong> au <strong>{new Date(calendrierCompo.date_fin).toLocaleDateString('fr-FR')}</strong>
                       </Typography>
-                      {prog?.contenu && (
+                      {prog?.date_composition && (
                         <Typography variant="body2" mt={0.5}>
-                          📚 Programme : <em>{prog.contenu}</em>
+                          🕘 Cette matière : <strong>{new Date(`${prog.date_composition}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
+                          {prog.heure_debut && <> de <strong>{prog.heure_debut.slice(0, 5)}</strong>{prog.heure_fin && <> à <strong>{prog.heure_fin.slice(0, 5)}</strong></>}</>}
                         </Typography>
                       )}
                     </Alert>

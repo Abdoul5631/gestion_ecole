@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
@@ -17,19 +17,25 @@ import MeetingRoomTwoToneIcon from '@mui/icons-material/MeetingRoomTwoTone';
 import PersonTwoToneIcon from '@mui/icons-material/PersonTwoTone';
 import SettingsTwoToneIcon from '@mui/icons-material/SettingsTwoTone';
 import authService from 'services/auth';
+import ChangePasswordDialog from 'components/ChangePasswordDialog';
 
 export default function Profile() {
   const [open, setOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [pwdOpen, setPwdOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   const username = authService.getUsername();
-  const role = authService.getRole();
 
   const getRoleLabel = (role) => {
+    if (role === 'SUPER_ADMIN') return 'Super administrateur';
     if (role === 'ADMIN') return 'Administrateur';
     if (role === 'ENSEIGNANT') return 'Enseignant';
+    if (role === 'SECRETAIRE') return 'Secrétaire';
+    if (role === 'COMPTABLE') return 'Comptable';
+    if (role === 'SURVEILLANT') return 'Surveillant';
+    if (role === 'COMMUNICATION') return 'Responsable du site public';
     if (role === 'PARENT') return 'Parent';
     if (role === 'ELEVE') return 'Élève';
     return role;
@@ -74,18 +80,18 @@ export default function Profile() {
                     {username}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {getRoleLabel(role)}
+                    {authService.getRoles().map(getRoleLabel).join(' · ')}
                   </Typography>
                 </Box>
                 <Divider />
                 <List>
-                  <ListItemButton onClick={() => { setOpen(false); navigate('/dashboard/default'); }}>
+                  <ListItemButton onClick={() => { setOpen(false); navigate(authService.getRole() === 'ENSEIGNANT' ? '/enseignant/mon-profil' : '/mon-compte'); }}>
                     <ListItemIcon><PersonTwoToneIcon /></ListItemIcon>
                     <ListItemText primary="Mon profil" />
                   </ListItemButton>
-                  <ListItemButton onClick={() => { setOpen(false); }}>
+                  <ListItemButton onClick={() => { setOpen(false); setPwdOpen(true); }}>
                     <ListItemIcon><SettingsTwoToneIcon /></ListItemIcon>
-                    <ListItemText primary="Paramètres" />
+                    <ListItemText primary="Changer le mot de passe" />
                   </ListItemButton>
                   <Divider />
                   <ListItemButton onClick={handleLogout} sx={{ color: 'error.main' }}>
@@ -99,6 +105,7 @@ export default function Profile() {
             </Fade>
           )}
         </Popper>
+        <ChangePasswordDialog open={pwdOpen} onClose={() => setPwdOpen(false)} />
       </Box>
     </ClickAwayListener>
   );

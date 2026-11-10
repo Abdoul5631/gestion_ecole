@@ -1,3 +1,4 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useEffect, useState } from 'react';
 import api, { trimestreService, parametresService } from 'services/api';
 import {
@@ -31,14 +32,14 @@ export default function MonBulletinExamenBlanc() {
   const eleveId = role === 'PARENT' ? enfantId : eleveDirectId;
 
   useEffect(() => {
-    trimestreService.getAll().then(res => setTrimestres(res.data));
+    trimestreService.getAll().then(res => { setTrimestres(trimestresEnCours(res.data)); setSelectedTrimestre(prev => prev || idTrimestreParDefaut(res.data)); });
     parametresService.get().then(res => setEcole(res.data)).catch(() => {});
     if (role !== 'PARENT') {
       api.get('/auth/me/').then(res => { if (res.data.eleve) setEleveDirectId(res.data.eleve); });
     }
   }, []);
 
-  useEffect(() => { setBulletinData(null); setMonResultat(null); setSelectedTrimestre(''); }, [enfantId]);
+  useEffect(() => { setBulletinData(null); setMonResultat(null); setSelectedTrimestre(idTrimestreParDefaut(trimestres)); }, [enfantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchBulletin = async () => {
     if (!selectedTrimestre || !eleveId) return;

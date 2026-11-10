@@ -4,11 +4,16 @@ import { RouterProvider } from 'react-router-dom';
 import ThemeCustomization from './themes';
 
 import router from 'routes';
+import PorteMaintenance from 'components/PorteMaintenance';
+import ErreurGlobale from 'components/ErreurGlobale';
 
 function App() {
   return (
     <ThemeCustomization>
-      <RouterProvider router={router} />
+      <PorteMaintenance>
+        <RouterProvider router={router} />
+        <ErreurGlobale />
+      </PorteMaintenance>
     </ThemeCustomization>
   );
 }

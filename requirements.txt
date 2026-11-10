@@ -3,3 +3,8 @@ djangorestframework==3.17.1
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.9.0
 mysqlclient==2.2.8
+openpyxl==3.1.5
+python-dotenv==1.1.0
+reportlab==4.4.3
+Pillow==11.3.0
+pypdfium2==5.14.0

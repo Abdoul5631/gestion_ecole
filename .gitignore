@@ -17,6 +17,10 @@ media/
 local_settings.py
 .env
 .env.*
+*.env
+!.env.example
+# mots de passe des comptes de démonstration : reste sur ce poste
+COMPTES.md
 
 # Node / Frontend
 node_modules/
@@ -28,3 +32,5 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+
+documents_prives/

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Box, Card, CardContent, Typography, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, CircularProgress, Alert, Chip,
-  Divider, TextField, MenuItem, Button
+  Divider, TextField, MenuItem, Button, Avatar
 } from '@mui/material';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
@@ -11,6 +11,8 @@ import DateRangeIcon from '@mui/icons-material/DateRange';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import SaveIcon from '@mui/icons-material/Save';
 import authService from 'services/auth';
+import useSelectedEnfant from 'hooks/useSelectedEnfant';
+import EnfantSelector from 'components/EnfantSelector';
 import {
   calendrierExamenBlancService, classeMatiereService, eleveService,
   evaluationService, noteService, getResults
@@ -19,6 +21,30 @@ import {
 function fmtDate(d) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
+
+/** « 2 – 7 décembre 2026 » (ou deux dates complètes si l'API ne gère pas formatRange). */
+function plageDates(debut, fin) {
+  try {
+    return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      .formatRange(new Date(debut), new Date(fin));
+  } catch {
+    return `${fmtDate(debut)} → ${fmtDate(fin)}`;
+  }
+}
+
+/** Où en est la session : en cours / dans N jours / terminée. */
+function statutSession(debut, fin) {
+  const jour = new Date(); jour.setHours(0, 0, 0, 0);
+  const d = new Date(`${debut}T00:00:00`);
+  const f = new Date(`${fin}T00:00:00`);
+  if (jour > f) return { label: 'Terminé', color: 'default' };
+  if (jour >= d) return { label: 'En cours', color: 'success' };
+  const n = Math.ceil((d - jour) / 86400000);
+  return { label: n === 1 ? 'Demain' : `Dans ${n} jours`, color: n <= 7 ? 'warning' : 'info' };
+}
+
+const AVATAR_COLORS = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#0288d1', '#00796b', '#5d4037'];
+const avatarColor = (name) => AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
 // ─── Saisie des notes d'Examen Blanc — même style simple que la saisie de notes habituelle ─
 function SaisieExamenBlancInline({ niveauId, trimestreId, trimestreLabel }) {
@@ -140,7 +166,7 @@ function SaisieExamenBlancInline({ niveauId, trimestreId, trimestreLabel }) {
                 <TableRow>
                   <TableCell sx={{ color: 'white' }}><strong>Matricule</strong></TableCell>
                   <TableCell sx={{ color: 'white' }}><strong>Nom Prénom</strong></TableCell>
-                  <TableCell sx={{ color: 'white', width: 160 }}><strong>Note /20</strong></TableCell>
+                  <TableCell sx={{ color: 'white', width: { xs: 'auto', sm: 160 } }}><strong>Note /20</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -176,13 +202,20 @@ export default function ProgrammeExamenBlancView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const role = authService.getRole();
+  // parent : uniquement la classe de l'enfant choisi
+  const { enfants, selectedId, setSelectedId, loading: loadingEnfants } = useSelectedEnfant();
 
   useEffect(() => {
-    calendrierExamenBlancService.getAll()
+    if (role === 'PARENT' && (loadingEnfants || !selectedId)) {
+      if (!loadingEnfants) { setCalendriers([]); setLoading(false); }
+      return;
+    }
+    setLoading(true);
+    calendrierExamenBlancService.getAll(role === 'PARENT' ? `?eleve_id=${selectedId}` : '')
       .then(res => setCalendriers(getResults(res).items))
       .catch(() => setError("Erreur lors du chargement du programme d'Examen Blanc."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [role, selectedId, loadingEnfants]);
 
   return (
     <Box>
@@ -203,6 +236,9 @@ export default function ProgrammeExamenBlancView() {
         </Box>
       </Box>
 
+      {role === 'PARENT' && (
+        <EnfantSelector enfants={enfants} selectedId={selectedId} setSelectedId={setSelectedId} loading={loadingEnfants} />
+      )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {loading ? (
@@ -210,78 +246,78 @@ export default function ProgrammeExamenBlancView() {
       ) : calendriers.length === 0 ? (
         <Alert severity="info">Aucun programme d'Examen Blanc publié pour le moment.</Alert>
       ) : (
-        calendriers.map(cal => (
-          <Card key={cal.id} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden' }} elevation={2}>
-            {/* Bandeau en-tête */}
-            <Box sx={{
-              background: 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)',
-              color: 'white', px: 3, py: 2.5,
-            }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
+        calendriers.map(cal => {
+          const statut = statutSession(cal.date_debut, cal.date_fin);
+          const programmes = [...cal.programmes].sort((x, y) =>
+            String(x.date_examen || '9999').localeCompare(String(y.date_examen || '9999'))
+            || String(x.heure_debut || '').localeCompare(String(y.heure_debut || ''))
+            || String(x.matiere_nom).localeCompare(String(y.matiere_nom)));
+          return (
+            <Card key={cal.id} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+              <Box sx={{
+                px: { xs: 2, sm: 3 }, py: 2, bgcolor: 'grey.50',
+                borderBottom: '1px solid', borderColor: 'divider',
+                borderLeft: '6px solid', borderLeftColor: 'warning.main',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5,
+              }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="bold" lineHeight={1.2}>{cal.niveau_nom}</Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    {cal.annee_libelle} — {cal.trimestre_nom}
-                  </Typography>
+                  <Typography variant="h5" fontWeight={700} lineHeight={1.2}>{cal.niveau_nom}</Typography>
+                  <Typography variant="body2" color="text.secondary">{cal.annee_libelle} — {cal.trimestre_nom}</Typography>
                 </Box>
-                <Chip
-                  icon={<DateRangeIcon sx={{ color: 'white !important' }} />}
-                  label={`${fmtDate(cal.date_debut)}  →  ${fmtDate(cal.date_fin)}`}
-                  sx={{
-                    bgcolor: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 600,
-                    px: 1, height: 36, borderRadius: 2,
-                  }}
-                />
-              </Box>
-            </Box>
-
-            <CardContent sx={{ pt: 3 }}>
-              <Box display="flex" alignItems="center" gap={1} mb={2}>
-                <MenuBookIcon color="primary" fontSize="small" />
-                <Typography variant="subtitle1" fontWeight="bold">Programme par matière</Typography>
+                <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
+                  <Chip icon={<DateRangeIcon />} variant="outlined" label={plageDates(cal.date_debut, cal.date_fin)}
+                    sx={{ fontWeight: 600, height: 34, '& .MuiChip-label': { whiteSpace: 'normal' } }} />
+                  <Chip size="small" color={statut.color} label={statut.label} sx={{ fontWeight: 600 }} />
+                </Box>
               </Box>
 
-              {cal.programmes.length === 0 ? (
-                <Alert severity="info" variant="outlined">
-                  Aucun programme par matière renseigné pour l'instant.
-                </Alert>
-              ) : (
-                <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 2 }}>
-                  <Table size="small">
-                    <TableHead sx={{ bgcolor: 'primary.main' }}>
-                      <TableRow>
-                        <TableCell sx={{ color: 'white', width: 200 }}><strong>Matière</strong></TableCell>
-                        <TableCell sx={{ color: 'white' }}><strong>Programme à évaluer</strong></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {cal.programmes.map((p, i) => (
-                        <TableRow key={p.id} hover sx={{ bgcolor: i % 2 === 0 ? 'transparent' : 'action.hover' }}>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="bold">{p.matiere_nom}</Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" color={p.contenu ? 'text.primary' : 'text.disabled'}>
-                              {p.contenu || 'Non renseigné'}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
+              <CardContent sx={{ pt: 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={2}>
+                  <MenuBookIcon color="primary" fontSize="small" />
+                  <Typography variant="subtitle1" fontWeight="bold">Jour et heure par matière</Typography>
+                  {programmes.length > 0 && <Chip size="small" variant="outlined" label={programmes.length} />}
+                </Box>
 
-              {role === 'ENSEIGNANT' && (
-                <SaisieExamenBlancInline
-                  niveauId={cal.niveau}
-                  trimestreId={cal.trimestre}
-                  trimestreLabel={`${cal.annee_libelle} — ${cal.trimestre_nom}`}
-                />
-              )}
-            </CardContent>
-          </Card>
-        ))
+                {programmes.length === 0 ? (
+                  <Alert severity="info" variant="outlined">
+                    Les jours et heures par matière ne sont pas encore renseignés.
+                  </Alert>
+                ) : (
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
+                    {programmes.map((pr) => (
+                      <Box key={pr.id} sx={{
+                        display: 'flex', gap: 1.5, alignItems: 'flex-start', p: 1.5,
+                        border: '1px solid', borderColor: 'divider', borderRadius: 2,
+                        transition: 'box-shadow 0.15s', '&:hover': { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+                      }}>
+                        <Avatar sx={{ width: 36, height: 36, fontSize: 14, fontWeight: 'bold', bgcolor: avatarColor(pr.matiere_nom) }}>
+                          {pr.matiere_nom?.[0]?.toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={700} variant="body2">{pr.matiere_nom}</Typography>
+                          <Typography variant="body2" color={pr.date_examen ? 'text.primary' : 'text.disabled'}
+                            sx={{ mt: 0.25, wordBreak: 'break-word' }}>
+                            {pr.date_examen
+                              ? `${new Date(`${pr.date_examen}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}${pr.heure_debut ? ` · ${pr.heure_debut.slice(0, 5)}${pr.heure_fin ? ` – ${pr.heure_fin.slice(0, 5)}` : ''}` : ''}`
+                              : 'Pas encore planifié'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+
+                {role === 'ENSEIGNANT' && (
+                  <SaisieExamenBlancInline
+                    niveauId={cal.niveau}
+                    trimestreId={cal.trimestre}
+                    trimestreLabel={`${cal.annee_libelle} — ${cal.trimestre_nom}`}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          );
+        })
       )}
     </Box>
   );

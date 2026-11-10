@@ -1,5 +1,8 @@
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useEffect, useState } from 'react';
-import api, { trimestreService, parametresService } from 'services/api';
+import api, { trimestreService, parametresService, bulletinService } from 'services/api';
+import { imprimerBulletin } from 'utils/printBulletin';
 import {
   Box, Card, CardContent, Typography, CircularProgress,
   MenuItem, TextField, Alert, Button, Grid
@@ -10,7 +13,10 @@ import authService from 'services/auth';
 import useSelectedEnfant from 'hooks/useSelectedEnfant';
 import EnfantSelector from 'components/EnfantSelector';
 import { BulletinPrint } from 'pages/bulletin/Bulletin';
+import { readThrough, CacheKeys, NEVER_CACHED_MSG } from 'offline/cacheStore';
+import { useIsOnline } from 'offline/RequireOnline';
 
+import { estEnLigne } from 'offline/reseau';
 export default function MonBulletin() {
   const [trimestres, setTrimestres] = useState([]);
   const [selectedTrimestre, setSelectedTrimestre] = useState('');
@@ -19,58 +25,79 @@ export default function MonBulletin() {
   const [error, setError] = useState('');
   const [ecole, setEcole] = useState({});
   const role = authService.getRole();
+  const online = useIsOnline();
 
-  // Pour les élèves → ID direct depuis me(). Pour les parents → hook enfants.
   const [eleveDirectId, setEleveDirectId] = useState(null);
   const { enfants, selectedId: enfantId, selectedEnfant, setSelectedId, loading: loadingEnfants } = useSelectedEnfant();
 
   const eleveId = role === 'PARENT' ? enfantId : eleveDirectId;
 
   useEffect(() => {
-    trimestreService.getAll().then(res => setTrimestres(res.data));
-    parametresService.get().then(res => setEcole(res.data)).catch(() => {});
+    readThrough(CacheKeys.trimestres(), async () => {
+      const res = await trimestreService.getAll();
+      return res.data;
+    }).then((r) => { if (!r.neverCached) setTrimestres(trimestresEnCours(r.data)); });
+
+    readThrough(CacheKeys.parametres(), async () => {
+      const res = await parametresService.get();
+      return res.data;
+    }).then((r) => { if (r.data) setEcole(r.data); }).catch(() => {});
+
     if (role !== 'PARENT') {
-      api.get('/auth/me/').then(res => { if (res.data.eleve) setEleveDirectId(res.data.eleve); });
+      readThrough(CacheKeys.authMe(), async () => {
+        const res = await api.get('/auth/me/');
+        return res.data;
+      }).then((r) => { if (r.data?.eleve) setEleveDirectId(r.data.eleve); });
     }
-  }, []);
+  }, [role]);
 
-  // Réinitialise le bulletin quand l'enfant change
   useEffect(() => { setBulletinData(null); setSelectedTrimestre(''); }, [enfantId]);
+  // Année en cours par défaut (parmi les trimestres ouverts par la direction)
+  useEffect(() => {
+    if (selectedTrimestre) return;
+    const ouverts = (Array.isArray(trimestres) ? trimestres : []).filter(t => t.bulletins_ouverts);
+    setSelectedTrimestre(idTrimestreParDefaut(ouverts) || ouverts[0]?.id || '');
+  }, [trimestres, selectedTrimestre, enfantId]);
 
-  const fetchBulletin = () => {
+  const fetchBulletin = async () => {
     if (!selectedTrimestre || !eleveId) return;
     setLoading(true);
     setError('');
     setBulletinData(null);
-    api.get(`/notes/bulletin/?eleve_id=${eleveId}&trimestre_id=${selectedTrimestre}`)
-      .then(res => setBulletinData(res.data))
-      .catch(() => setError('Erreur lors du chargement du bulletin.'))
-      .finally(() => setLoading(false));
+    try {
+      const r = await readThrough(
+        CacheKeys.bulletin(eleveId, selectedTrimestre),
+        async () => {
+          const res = await api.get(`/notes/bulletin/?eleve_id=${eleveId}&trimestre_id=${selectedTrimestre}`);
+          return res.data;
+        },
+      );
+      if (r.neverCached) setError(NEVER_CACHED_MSG);
+      else setBulletinData(r.data);
+    } catch (e) {
+      setError(e?.response?.data?.code === 'bulletins_fermes' ? 'Le bulletin de ce trimestre n’est pas encore prêt. Vous serez prévenu dès qu’il sera disponible.' : e?.response?.data?.detail || (estEnLigne() ? 'Erreur lors du chargement du bulletin.' : NEVER_CACHED_MSG));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePrint = () => {
-    const content = document.getElementById('bulletin-print');
-    if (!content) return;
-    const w = window.open('', '_blank');
-    w.document.write(`<html><head><title>Bulletin</title>
-      <style>body{margin:0;font-family:Arial,sans-serif;}</style>
-      </head><body>${content.outerHTML}</body></html>`);
-    w.document.close(); w.focus(); w.print(); w.close();
-  };
+  const handlePrint = () => imprimerBulletin('bulletin-print', 'Bulletin de notes');
+
+  // Seuls les trimestres dont la direction a ouvert les bulletins sont proposés
+  const trimestresOuverts = (Array.isArray(trimestres) ? trimestres : []).filter(t => t.bulletins_ouverts);
 
   const handleDownloadPDF = async () => {
-    const content = document.getElementById('bulletin-print');
-    if (!content) return;
-    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-      import('jspdf'), import('html2canvas')
-    ]);
-    const canvas = await html2canvas(content, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageW = pdf.internal.pageSize.getWidth();
-    const imgH = (canvas.height * pageW) / canvas.width;
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pageW, imgH);
+    if (!online) {
+      setError('Connexion requise pour télécharger le PDF.');
+      return;
+    }
+    if (!eleveId || !selectedTrimestre) return;
     const nom = selectedEnfant ? `${selectedEnfant.nom}_${selectedEnfant.prenom}` : 'bulletin';
-    pdf.save(`bulletin_${nom}.pdf`);
+    try {
+      await bulletinService.telechargerPdf(eleveId, selectedTrimestre, `bulletin_${nom}.pdf`);
+    } catch {
+      setError('Impossible de télécharger le bulletin PDF.');
+    }
   };
 
   return (
@@ -82,7 +109,9 @@ export default function MonBulletin() {
         {bulletinData && (
           <Box display="flex" gap={1}>
             <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>Imprimer</Button>
-            <Button size="small" variant="contained" startIcon={<DownloadIcon />} onClick={handleDownloadPDF}>PDF</Button>
+            <Button size="small" variant="contained" startIcon={<DownloadIcon />} onClick={handleDownloadPDF} disabled={!online}>
+              PDF
+            </Button>
           </Box>
         )}
       </Box>
@@ -92,9 +121,25 @@ export default function MonBulletin() {
       )}
 
       {role === 'PARENT' && enfants.length === 0 && !loadingEnfants && (
-        <Alert severity="warning" sx={{ mb: 2 }}>Aucun enfant lié à votre compte. Contactez l'administration.</Alert>
+        <Alert severity="warning" sx={{ mb: 2 }}>Aucun enfant lié à votre compte. Contactez l&apos;administration.</Alert>
       )}
 
+      {trimestres.length > 0 && trimestresOuverts.length === 0 && (
+        <Card sx={{ mb: 3, textAlign: 'center', border: '1px dashed', borderColor: 'divider', boxShadow: 'none' }}>
+          <CardContent sx={{ py: 6 }}>
+            <HourglassEmptyIcon sx={{ fontSize: 52, color: 'text.disabled' }} />
+            <Typography variant="h5" fontWeight={800} mt={1.5}>
+              {role === 'PARENT' ? 'Le bulletin n’est pas encore prêt' : 'Ton bulletin n’est pas encore prêt'}
+            </Typography>
+            <Typography color="text.secondary" mt={1} sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.7 }}>
+              L’école publie les bulletins à la fin du trimestre, une fois toutes les notes saisies et vérifiées.
+              Vous recevrez un message dès qu’il sera disponible.
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
+
+      {!(trimestres.length > 0 && trimestresOuverts.length === 0) && (
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="flex-end">
@@ -103,9 +148,13 @@ export default function MonBulletin() {
               <TextField select fullWidth size="small" value={selectedTrimestre}
                 onChange={e => { setSelectedTrimestre(e.target.value); setBulletinData(null); }}>
                 <MenuItem value=""><em>Choisir un trimestre</em></MenuItem>
-                {trimestres.map(t => (
-                  <MenuItem key={t.id} value={t.id}>{t.annee_libelle} — {t.nom}</MenuItem>
-                ))}
+                {(Array.isArray(trimestres) ? trimestres : [])
+                  .filter(t => t.bulletins_ouverts || t.annee_libelle === trimestresOuverts[0]?.annee_libelle)
+                  .map(t => (
+                    <MenuItem key={t.id} value={t.id} disabled={!t.bulletins_ouverts}>
+                      {t.annee_libelle} — {t.nom}{t.bulletins_ouverts ? '' : ' (pas encore prêt)'}
+                    </MenuItem>
+                  ))}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
@@ -117,12 +166,13 @@ export default function MonBulletin() {
           </Grid>
         </CardContent>
       </Card>
+      )}
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
       {loading && <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>}
 
       {bulletinData && !loading && (
-        bulletinData.disciplines.length === 0
+        !bulletinData.disciplines?.length
           ? <Alert severity="info">Aucune note enregistrée pour ce trimestre.</Alert>
           : <BulletinPrint data={bulletinData} ecole={ecole} />
       )}

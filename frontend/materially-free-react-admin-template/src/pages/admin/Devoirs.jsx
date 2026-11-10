@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
+import { Fragment, useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Typography, Grid, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
@@ -10,16 +11,59 @@ import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DateRangeIcon from '@mui/icons-material/DateRange';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { evaluationService, classeMatiereService, classeService, trimestreService } from 'services/api';
 import useIsMobile from 'hooks/useIsMobile';
 import { useNavigate } from 'react-router-dom';
+import { peutSaisir } from 'utils/droits';
+import authService from 'services/auth';
 
 const TYPE_COLORS = { DEVOIR1: 'primary', DEVOIR2: 'secondary', COMPOSITION: 'warning', EXAMEN_BLANC: 'error' };
 const TYPE_LABELS = { DEVOIR1: 'Devoir 1', DEVOIR2: 'Devoir 2', COMPOSITION: 'Composition', EXAMEN_BLANC: 'Examen Blanc' };
+// Cette page ne traite que les devoirs (2 par trimestre) : compositions et examens blancs relèvent du directeur, page « Compositions »
+const TYPES_DEVOIR = ['DEVOIR1', 'DEVOIR2'];
 
 const initForm = { type: 'DEVOIR1', coefficient: 1, trimestre: '', classe_matiere: '', date: '' };
 
+// ─── Regroupement par semaine (du lundi au dimanche) : cette semaine et la suivante d'abord ───
+const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const lundiDe = (d) => { const l = new Date(d); l.setHours(12, 0, 0, 0); l.setDate(l.getDate() - ((l.getDay() + 6) % 7)); return l; };
+const plusJours = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const jourMois = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+const dateDevoir = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function semaines(devoirs) {
+  const lundi = lundiDe(new Date());
+  const bornes = {
+    cette: [isoLocal(lundi), isoLocal(plusJours(lundi, 6))],
+    suivante: [isoLocal(plusJours(lundi, 7)), isoLocal(plusJours(lundi, 13))],
+  };
+  const groupes = [
+    { code: 'cette', titre: 'Cette semaine', sous: `du ${jourMois(lundi)} au ${jourMois(plusJours(lundi, 6))}`, couleur: 'primary', items: [] },
+    { code: 'suivante', titre: 'Semaine prochaine', sous: `du ${jourMois(plusJours(lundi, 7))} au ${jourMois(plusJours(lundi, 13))}`, couleur: 'info', items: [] },
+    { code: 'plus-tard', titre: 'Plus tard', sous: '', couleur: 'default', items: [] },
+    { code: 'sans-date', titre: 'Date pas encore fixée', sous: '', couleur: 'default', items: [] },
+    { code: 'passes', titre: 'Déjà passés', sous: '', couleur: 'default', items: [], replie: true },
+  ];
+  const g = Object.fromEntries(groupes.map((x) => [x.code, x]));
+  devoirs.forEach((ev) => {
+    const d = ev.date;
+    if (!d) g['sans-date'].items.push(ev);
+    else if (d < bornes.cette[0]) g.passes.items.push(ev);
+    else if (d <= bornes.cette[1]) g.cette.items.push(ev);
+    else if (d <= bornes.suivante[1]) g.suivante.items.push(ev);
+    else g['plus-tard'].items.push(ev);
+  });
+  const parDate = (a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.classe_nom).localeCompare(String(b.classe_nom));
+  groupes.forEach((x) => x.items.sort(parDate));
+  g.passes.items.reverse(); // les plus récents d'abord
+  // cette semaine et la suivante restent affichées même vides ; les autres seulement s'il y a des devoirs
+  return groupes.filter((x) => x.items.length || x.code === 'cette' || x.code === 'suivante');
+}
+
 export default function Devoirs() {
+  const saisie = peutSaisir('pedagogie'); // le directeur consulte, l'enseignant saisit
   const navigate = useNavigate();
   const [evaluations, setEvaluations] = useState([]);
   const [classeMatieres, setClasseMatieres] = useState([]);
@@ -42,6 +86,7 @@ export default function Devoirs() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState(initForm);
+  const [passesOuverts, setPassesOuverts] = useState(false);
 
   useEffect(() => {
     // Données de référence (filtres + formulaire) — chargées indépendamment
@@ -52,7 +97,8 @@ export default function Devoirs() {
     ]).then(([resCM, resC, resT]) => {
       setClasseMatieres(resCM.data);
       setClasses(resC.data);
-      setTrimestres(resT.data);
+      setTrimestres(trimestresEnCours(resT.data));
+      setFilterTrimestre(prev => prev || idTrimestreParDefaut(resT.data));
     }).catch(() => setError('Erreur de chargement des données de référence.'));
 
     // Évaluations séparément
@@ -78,10 +124,13 @@ export default function Devoirs() {
     ? classeMatieres.filter(cm => String(cm.classe) === String(form.classe_matiere_classe))
     : classeMatieres;
 
-  const formClasseIsExamen = !!classes.find(c => String(c.id) === String(form.classe_matiere_classe))?.niveau_is_classe_examen;
-  const typeOptionsForm = Object.entries(TYPE_LABELS).filter(([k]) => k !== 'EXAMEN_BLANC' || formClasseIsExamen);
+  // On ne programme ici que les devoirs, une seule fois par trimestre ; compositions et examens blancs : directeur
+  const typeOptionsForm = [['DEVOIR1', TYPE_LABELS.DEVOIR1], ['DEVOIR2', TYPE_LABELS.DEVOIR2]];
+  const dejaProgramme = (type) => evaluations.some(ev => String(ev.classe_matiere) === String(form.classe_matiere)
+    && String(ev.trimestre) === String(form.trimestre) && ev.type === type);
 
   const filtered = evaluations.filter(ev => {
+    if (!TYPES_DEVOIR.includes(ev.type)) return false;
     const cm = classeMatieres.find(c => c.id === ev.classe_matiere);
     const matchClasse = !filterClasse || (cm && String(cm.classe) === String(filterClasse));
     const matchMatiere = !filterMatiere || (cm && String(cm.matiere) === String(filterMatiere));
@@ -138,19 +187,28 @@ export default function Devoirs() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={1} flexWrap="wrap">
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Devoirs & Évaluations</Typography>
+        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Devoirs</Typography>
         <Box display="flex" gap={1} flexWrap="wrap">
-          <Button
-            variant="outlined" size="small" startIcon={<DateRangeIcon />} color="warning"
-            onClick={() => navigate('/admin/compositions')}>
-            Calendrier des Compositions
-          </Button>
-          <Button variant="contained" size="small" startIcon={<AddIcon />}
-            onClick={() => { setError(''); setForm(initForm); setOpen(true); }}>
-            Nouvelle Évaluation
-          </Button>
+          {authService.getRole() === 'ADMIN' && (
+            <Button
+              variant="outlined" size="small" startIcon={<DateRangeIcon />} color="warning"
+              onClick={() => navigate('/admin/compositions')}>
+              Compositions et examens blancs
+            </Button>
+          )}
+          {saisie && (
+            <Button variant="contained" size="small" startIcon={<AddIcon />}
+              onClick={() => { setError(''); setForm(initForm); setOpen(true); }}>
+              Nouveau devoir
+            </Button>
+          )}
         </Box>
       </Box>
+
+      <Alert severity="info" icon={false} sx={{ mb: 2, py: 0.5 }}>
+        Il y a <strong>deux devoirs par trimestre</strong> (Devoir 1 et Devoir 2) pour chaque matière. Les compositions et les examens blancs
+        ne sont pas des devoirs : c’est le directeur qui les programme.
+      </Alert>
 
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
       {error && !open && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
@@ -178,7 +236,7 @@ export default function Devoirs() {
               <TextField select fullWidth label="Type" size="small"
                 value={filterType} onChange={e => setFilterType(e.target.value)}>
                 <MenuItem value="">Tous les types</MenuItem>
-                {Object.entries(TYPE_LABELS).map(([k, v]) => (
+                {Object.entries(TYPE_LABELS).filter(([k]) => TYPES_DEVOIR.includes(k)).map(([k, v]) => (
                   <MenuItem key={k} value={k}>{v}</MenuItem>
                 ))}
               </TextField>
@@ -214,63 +272,90 @@ export default function Devoirs() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                        Aucune évaluation trouvée.
-                      </TableCell>
-                    </TableRow>
-                  ) : filtered.map(ev => (
-                    <TableRow key={ev.id} hover
-                      sx={{ opacity: ev.is_active ? 1 : 0.55, bgcolor: ev.is_active ? 'inherit' : '#fff8e1' }}>
-                      <TableCell>{ev.classe_nom}</TableCell>
-                      <TableCell><strong>{ev.matiere_nom}</strong></TableCell>
-                      <TableCell>
-                        <Chip label={TYPE_LABELS[ev.type] || ev.type}
-                          color={TYPE_COLORS[ev.type] || 'default'} size="small" />
-                      </TableCell>
-                      <TableCell>{ev.date || <em style={{ color: '#bbb' }}>—</em>}</TableCell>
-                      <TableCell>{ev.trimestre_nom}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={ev.is_active ? 'Active' : 'Annulée'}
-                          color={ev.is_active ? 'success' : 'default'}
-                          size="small" variant={ev.is_active ? 'filled' : 'outlined'}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box display="flex" gap={0.5} justifyContent="flex-end">
-                          <Tooltip title="Voir les notes">
-                            <IconButton size="small" color="primary" onClick={() => handleOpenNotes(ev)}>
-                              <VisibilityIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title={ev.is_active ? 'Annuler' : 'Réactiver'}>
-                            <IconButton size="small"
-                              color={ev.is_active ? 'warning' : 'success'}
-                              onClick={() => { setSelected(ev); setCancelOpen(true); }}>
-                              {ev.is_active
-                                ? <PauseCircleIcon fontSize="small" />
-                                : <PlayCircleIcon fontSize="small" />}
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {semaines(filtered).map((grp) => {
+                    const ouvert = !grp.replie || passesOuverts;
+                    return (
+                      <Fragment key={grp.code}>
+                        <TableRow
+                          onClick={grp.replie ? () => setPassesOuverts((o) => !o) : undefined}
+                          sx={{ bgcolor: grp.code === 'cette' ? 'primary.lighter' : 'grey.50', cursor: grp.replie ? 'pointer' : 'default' }}>
+                          <TableCell colSpan={7} sx={{ py: 1.25 }}>
+                            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                              <Typography fontWeight={800} color={grp.code === 'cette' ? 'primary.dark' : 'text.primary'}>{grp.titre}</Typography>
+                              {grp.sous && <Typography variant="body2" color="text.secondary">{grp.sous}</Typography>}
+                              <Chip size="small" color={grp.items.length ? grp.couleur : 'default'} variant={grp.items.length ? 'filled' : 'outlined'}
+                                label={`${grp.items.length} devoir${grp.items.length > 1 ? 's' : ''}`} sx={{ fontWeight: 700 }} />
+                              {grp.replie && (
+                                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+                                  {passesOuverts ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                                </Box>
+                              )}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                        {ouvert && grp.items.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} sx={{ py: 1.5, color: 'text.secondary', fontStyle: 'italic' }}>
+                              Aucun devoir prévu.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {ouvert && grp.items.map(ev => (
+                          <TableRow key={ev.id} hover
+                            sx={{ opacity: ev.is_active ? 1 : 0.55, bgcolor: ev.is_active ? 'inherit' : '#fff8e1' }}>
+                            <TableCell>{ev.classe_nom}</TableCell>
+                            <TableCell><strong>{ev.matiere_nom}</strong></TableCell>
+                            <TableCell>
+                              <Chip label={TYPE_LABELS[ev.type] || ev.type}
+                                color={TYPE_COLORS[ev.type] || 'default'} size="small" />
+                            </TableCell>
+                            <TableCell sx={{ whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                              {ev.date ? dateDevoir(ev.date) : <em style={{ color: '#bbb' }}>—</em>}
+                            </TableCell>
+                            <TableCell>{ev.trimestre_nom}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={ev.is_active ? 'Active' : 'Annulée'}
+                                color={ev.is_active ? 'success' : 'default'}
+                                size="small" variant={ev.is_active ? 'filled' : 'outlined'}
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Box display="flex" gap={0.5} justifyContent="flex-end">
+                                <Tooltip title="Voir les notes">
+                                  <IconButton size="small" color="primary" onClick={() => handleOpenNotes(ev)}>
+                                    <VisibilityIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                {saisie && <Tooltip title={ev.is_active ? 'Annuler' : 'Réactiver'}>
+                                  <IconButton size="small"
+                                    color={ev.is_active ? 'warning' : 'success'}
+                                    onClick={() => { setSelected(ev); setCancelOpen(true); }}>
+                                    {ev.is_active
+                                      ? <PauseCircleIcon fontSize="small" />
+                                      : <PlayCircleIcon fontSize="small" />}
+                                  </IconButton>
+                                </Tooltip>}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
           )}
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            {filtered.length} évaluation(s)
+            {filtered.length} devoir(s)
           </Typography>
         </CardContent>
       </Card>
 
       {/* Dialog Création */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>Nouvelle Évaluation</DialogTitle>
+        <DialogTitle>Nouveau devoir</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
@@ -298,7 +383,9 @@ export default function Devoirs() {
                 value={form.type}
                 onChange={e => setForm({ ...form, type: e.target.value })}>
                 {typeOptionsForm.map(([k, v]) => (
-                  <MenuItem key={k} value={k}>{v}</MenuItem>
+                  <MenuItem key={k} value={k} disabled={dejaProgramme(k)}>
+                    {v}{dejaProgramme(k) ? ' — déjà programmé' : ''}
+                  </MenuItem>
                 ))}
               </TextField>
             </Grid>

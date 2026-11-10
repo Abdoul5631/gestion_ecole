@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { classeMatiereService, presenceService, eleveService, classeService, getResults } from 'services/api';
+import { peutSaisir } from 'utils/droits';
 
 const STATUS_OPTIONS = [
   { value: 'PRESENT', label: 'Présent' },
@@ -15,13 +16,18 @@ const STATUS_OPTIONS = [
 ];
 
 export default function PresencesClasse() {
+  const saisie = peutSaisir('pedagogie'); // le directeur consulte, l'enseignant saisit
   const [classes, setClasses] = useState([]);
   const [classeMatieres, setClasseMatieres] = useState([]);
   const [selectedClasse, setSelectedClasse] = useState('');
   const [selectedCM, setSelectedCM] = useState('');
 
-  const today = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(today);
+  const lastSchoolDay = () => {
+    const d = new Date();
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
+  const [selectedDate, setSelectedDate] = useState(lastSchoolDay);
 
   const [eleves, setEleves] = useState([]);
   const [presencesData, setPresencesData] = useState({});
@@ -59,9 +65,10 @@ export default function PresencesClasse() {
     ]).then(([resEl, resPr]) => {
       const { items: elevesItems } = getResults(resEl);
       setEleves(elevesItems);
+      const { items: presencesItems } = getResults(resPr);
       const init = {};
       elevesItems.forEach(el => {
-        const existing = resPr.data.find(p => p.eleve === el.id);
+        const existing = presencesItems.find(p => p.eleve === el.id);
         init[el.id] = existing ? existing.statut : 'PRESENT';
       });
       setPresencesData(init);
@@ -152,9 +159,11 @@ export default function PresencesClasse() {
           <CardContent>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={1} flexWrap="wrap">
               <Typography variant="h6">{eleves.length} élève(s) — {selectedDate}</Typography>
-              <Button size="small" variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving}>
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
-              </Button>
+              {saisie && (
+                <Button size="small" variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving}>
+                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+              )}
             </Box>
 
             {loading ? (
@@ -178,6 +187,7 @@ export default function PresencesClasse() {
                           <ToggleButtonGroup
                             value={presencesData[eleve.id] || 'PRESENT'}
                             exclusive
+                            disabled={!saisie}
                             onChange={(e, val) => handleStatusChange(eleve.id, val)}
                             size="small"
                           >

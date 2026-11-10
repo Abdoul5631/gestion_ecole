@@ -3,25 +3,16 @@ import api from 'services/api';
 import authService from 'services/auth';
 import {
   Box, Typography, MenuItem, TextField, Grid, Button,
-  CircularProgress, Alert, Divider, Card, CardContent
+  CircularProgress, Alert, Card, CardContent, Switch, FormControlLabel
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import { classeService, eleveService, trimestreService, parametresService } from 'services/api';
+import { classeService, eleveService, trimestreService, anneeService, parametresService, bulletinService } from 'services/api';
+import { imprimerBulletin } from 'utils/printBulletin';
+import { nuances } from 'utils/couleurs';
 
-function getMention(moy) {
-  if (moy === null || moy === undefined) return '';
-  if (moy >= 18) return 'Excellent';
-  if (moy >= 16) return 'Très Bien';
-  if (moy >= 14) return 'Bien';
-  if (moy >= 12) return 'Assez Bien';
-  if (moy >= 10) return 'Passable';
-  if (moy >= 8)  return 'Insuffisant';
-  if (moy >= 6)  return 'Faible';
-  return 'Très Faible';
-}
-
+import ScrollableDoc from 'components/ScrollableDoc';
 function getMentionGenerale(moy) {
   if (moy >= 16) return 'Félicitations';
   if (moy >= 14) return 'Encouragement';
@@ -54,306 +45,311 @@ function fmt(val) {
 }
 
 // ─── Composant bulletin imprimable (exporté pour réutilisation) ─
-export function BulletinPrint({ data, ecole = {} }) {
-  const mention = getMentionGenerale(data.moyenne_generale);
+export function BulletinPrint(props) {
+  return <ScrollableDoc><BulletinPrintDoc {...props} /></ScrollableDoc>;
+}
 
-  const tdStyle = {
-    border: '1px solid #333',
-    padding: '3px 6px',
-    fontSize: '12px',
-    textAlign: 'center',
+function BulletinPrintDoc({ data, ecole = {} }) {
+  const mention = getMentionGenerale(data.moyenne_generale);
+  // couleur de l'école (assombrie si trop claire pour un texte blanc) ; nuances pour les fonds
+  const c = nuances(ecole.couleur_primaire || '#1f3a5f');
+  const bord = '#c3c8cf';
+  const fille = data.eleve.sexe === 'F';
+  const rangTexte = (r, f = false) => (r == null ? '—' : r === 1 ? (f ? '1ère' : '1er') : `${r}e`);
+  const couleurMoy = (m) => ((m ?? 0) >= 10 ? '#0b6b2f' : '#b42318');
+
+  const td = { border: `1px solid ${bord}`, padding: '4px 6px', fontSize: '11.5px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' };
+  const th = { ...td, background: '#f1f3f6', color: '#3b4250', fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.3px', padding: '6px 4px', borderBottom: `2px solid ${c.main}` };
+  const gauche = { ...td, textAlign: 'left' };
+  const etiquette = { fontSize: '9.5px', color: '#5b6472', textTransform: 'uppercase', letterSpacing: '0.4px' };
+  const encadre = { border: `1px solid ${bord}`, borderRadius: 6, padding: '8px 10px' };
+
+  // moyenne de chaque groupe de matières (littéraires, scientifiques, autres)
+  const GROUPES = { LITTERATURE: 'Matières littéraires', SCIENTIFIQUE: 'Matières scientifiques', AUTRES: 'Autres matières' };
+  const parGroupe = [];
+  data.disciplines.forEach((d) => {
+    let g = parGroupe.find((x) => x.type === d.matiere_type);
+    if (!g) { g = { type: d.matiere_type, lignes: [] }; parGroupe.push(g); }
+    g.lignes.push(d);
+  });
+  const moyenneGroupe = (lignes) => {
+    const coef = lignes.reduce((t, d) => t + Number(d.coef || 0), 0);
+    const pts = lignes.reduce((t, d) => t + Number(d.moy_coef || 0), 0);
+    return coef ? pts / coef : null;
   };
-  const thStyle = {
-    ...tdStyle,
-    background: '#f0f0f0',
-    fontWeight: 'bold',
-  };
-  const leftTd = { ...tdStyle, textAlign: 'left' };
+
+  const ville = ecole.ville || '';
+  const aujourdhui = new Date().toLocaleDateString('fr-FR');
+  const stats = data.stats_classe;
 
   return (
-    <Box id="bulletin-print" sx={{
-      fontFamily: 'Arial, sans-serif',
-      p: 2,
-      maxWidth: '800px',
-      margin: '0 auto',
-      border: '1px solid #ccc',
-      bgcolor: 'white',
+    <div id="bulletin-print" style={{
+      fontFamily: 'Arial, Helvetica, sans-serif', color: '#14181f', padding: '18px 20px', maxWidth: 820,
+      margin: '0 auto', border: '1px solid #d0d4da', background: '#fff', boxSizing: 'border-box',
     }}>
-      {/* ─── EN-TÊTE ─── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
+      {/* ─── En-tête officiel ─── */}
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
           <tr>
-            <td style={{ width: '33%', verticalAlign: 'top', fontSize: '12px' }}>
-              {ecole.direction_regionale && <div style={{ fontWeight: 'bold' }}>{ecole.direction_regionale}</div>}
-              {ecole.direction_provinciale && <div>{ecole.direction_provinciale}</div>}
-              <div style={{ fontWeight: 'bold', marginTop: 2 }}>{ecole.nom_ecole || 'Établissement'}</div>
-              {ecole.ville && <div>{ecole.ville}</div>}
-              {ecole.boite_postale && <div>{ecole.boite_postale}</div>}
-              {ecole.telephone && <div>Tél : {ecole.telephone}</div>}
+            <td style={{ width: '38%', verticalAlign: 'top', fontSize: '11px', lineHeight: 1.45 }}>
+              {ecole.direction_regionale && <div style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '10.5px' }}>{ecole.direction_regionale}</div>}
+              {ecole.direction_provinciale && <div style={{ textTransform: 'uppercase', fontSize: '10.5px' }}>{ecole.direction_provinciale}</div>}
+              <div style={{ fontWeight: 800, fontSize: '13px', marginTop: 4, color: c.dark }}>{ecole.nom_ecole || 'Établissement'}</div>
+              <div style={{ color: '#4a5260' }}>
+                {[ecole.boite_postale, ecole.ville].filter(Boolean).join(' · ')}
+              </div>
+              {ecole.telephone && <div style={{ color: '#4a5260' }}>Tél. : {ecole.telephone}</div>}
+              {ecole.email && <div style={{ color: '#4a5260' }}>{ecole.email}</div>}
             </td>
-            <td style={{ width: '34%', textAlign: 'center', verticalAlign: 'middle' }}>
+            <td style={{ width: '24%', textAlign: 'center', verticalAlign: 'middle' }}>
               {ecole.logo_url && (
-                <img src={ecole.logo_url} alt="Logo"
-                  style={{ width: 56, height: 56, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} />
+                <img src={ecole.logo_url} alt="Logo" crossOrigin="anonymous"
+                  style={{ width: 78, height: 78, objectFit: 'contain', display: 'block', margin: '0 auto' }} />
               )}
-              <div style={{ fontSize: '12px' }}>
-                Année Scolaire : <strong>{data.trimestre.annee}</strong>
-              </div>
-              <div style={{ fontSize: '12px' }}>
-                <strong>{data.trimestre.nom}</strong>
-              </div>
+              {ecole.devise && <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#4a5260', marginTop: 4 }}>« {ecole.devise} »</div>}
             </td>
-            <td style={{ width: '33%', textAlign: 'right', fontSize: '11px', color: '#444', verticalAlign: 'top' }}>
-              {ecole.email && <div>{ecole.email}</div>}
-              {ecole.adresse && <div>{ecole.adresse}</div>}
-              {ecole.devise && <div style={{ fontStyle: 'italic', marginTop: 4 }}>« {ecole.devise} »</div>}
+            <td style={{ width: '38%', verticalAlign: 'top', textAlign: 'right' }}>
+              <div style={{ display: 'inline-block', textAlign: 'center', border: `1.5px solid ${c.main}`, borderRadius: 6, padding: '6px 14px' }}>
+                <div style={{ ...etiquette, color: c.dark }}>Année scolaire</div>
+                <div style={{ fontWeight: 800, fontSize: '15px', color: c.dark }}>{data.trimestre.annee}</div>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold',
-        textTransform: 'uppercase', border: '2px solid #333',
-        padding: '6px', marginBottom: '8px', letterSpacing: '2px' }}>
-        Bulletin de Notes
+      {/* ─── Titre ─── */}
+      <div style={{
+        marginTop: 12, marginBottom: 10, background: c.main, color: '#fff', textAlign: 'center', padding: '6px 10px',
+        borderRadius: 4, fontWeight: 700, fontSize: '14px', letterSpacing: '1.5px', textTransform: 'uppercase',
+        WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
+      }}>
+        Bulletin de notes · {data.trimestre.nom}
       </div>
 
-      {/* ─── INFO ÉLÈVE ─── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', fontSize: '12px' }}>
-        <tbody>
-          <tr>
-            <td style={{ width: '50%' }}>
-              <strong>Prénoms :</strong> {data.eleve.prenom}
-            </td>
-            <td style={{ width: '25%' }}>
-              <strong>Nom :</strong> {data.eleve.nom}
-            </td>
-            <td style={{ width: '25%' }}>
-              <strong>Classe :</strong> {data.classe || '—'}
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <strong>Matricule :</strong> {data.eleve.matricule}
-            </td>
-            <td>
-              <strong>Date de naissance :</strong> {data.eleve.date_naissance || '—'}
-            </td>
-            <td>
-              <strong>Lieu de naissance :</strong> {data.eleve.lieu_naissance || '—'}
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <strong>Sexe :</strong> {data.eleve.sexe === 'M' ? 'Masculin' : data.eleve.sexe === 'F' ? 'Féminin' : '—'}
-            </td>
-            <td>
-              <strong>Nbre d'élèves :</strong> {data.nb_eleves}
-            </td>
-            <td>
-              <strong>Classe Redoublée :</strong> 0
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* ─── L'élève ─── */}
+      <div style={{ ...encadre, display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10, padding: '6px 10px' }}>
+        {data.eleve.photo_url && (
+          <img src={data.eleve.photo_url} alt="" crossOrigin="anonymous"
+            style={{ width: 48, height: 58, objectFit: 'cover', borderRadius: 4, border: `1px solid ${bord}`, flexShrink: 0 }} />
+        )}
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px' }}>
+          <tbody>
+            {[
+              [['Nom et prénom(s)', `${data.eleve.nom} ${data.eleve.prenom}`], ['Classe', data.classe || '—'], ['Effectif', data.nb_eleves ?? '—']],
+              [['Né(e) le', [data.eleve.date_naissance, data.eleve.lieu_naissance && `à ${data.eleve.lieu_naissance}`].filter(Boolean).join(' ') || '—'],
+                ['Matricule', data.eleve.matricule], ['Redoublant', data.redoublant ? 'Oui' : 'Non']],
+              [['Sexe', data.eleve.sexe === 'M' ? 'Masculin' : data.eleve.sexe === 'F' ? 'Féminin' : '—'], null, null],
+            ].map((ligne, i) => (
+              <tr key={i}>
+                {ligne.map((cellule, j) => (
+                  <td key={j} style={{ padding: '2px 6px', width: j === 0 ? '46%' : '27%', whiteSpace: 'nowrap' }}>
+                    {cellule && <><span style={{ color: '#5b6472' }}>{cellule[0]} : </span><strong>{cellule[1]}</strong></>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {/* ─── TABLE DES DISCIPLINES ─── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px' }}>
+      {/* ─── Disciplines ─── */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10, WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, textAlign: 'left', width: '20%' }}>DISCIPLINES</th>
-            <th style={{ ...thStyle, width: '7%' }}>Devoir</th>
-            <th style={{ ...thStyle, width: '7%' }}>Comp.</th>
-            <th style={{ ...thStyle, width: '7%' }}>Moy/20</th>
-            <th style={{ ...thStyle, width: '5%' }}>Coef</th>
-            <th style={{ ...thStyle, width: '7%' }}>Moy×C</th>
-            <th style={{ ...thStyle, width: '5%' }}>Rang</th>
-            <th style={{ ...thStyle, width: '10%' }}>Visa Prof</th>
-            <th style={{ ...thStyle, width: '32%' }}>Appréciations</th>
+            <th style={{ ...th, textAlign: 'left', width: '24%', paddingLeft: 8 }}>Disciplines</th>
+            <th style={{ ...th, width: '7%' }}>Devoir</th>
+            <th style={{ ...th, width: '7%' }}>Compo.</th>
+            <th style={{ ...th, width: '8%' }}>Moy./20</th>
+            <th style={{ ...th, width: '6%' }}>Coef.</th>
+            <th style={{ ...th, width: '8%' }}>Total</th>
+            <th style={{ ...th, width: '6%' }}>Rang</th>
+            <th style={{ ...th, width: '22%' }}>Appréciation</th>
+            <th style={{ ...th, width: '12%' }}>Signature</th>
           </tr>
         </thead>
         <tbody>
-          {(() => {
-            const rows = [];
-            let lastType = null;
-            const GROUP_LABELS = {
-              LITTERATURE: 'LITTÉRATURE',
-              SCIENTIFIQUE: 'SCIENCES',
-              AUTRES: 'AUTRES DISCIPLINES',
-            };
-            data.disciplines.forEach((d, i) => {
-              // En-tête de groupe si le type change
-              if (d.matiere_type !== lastType) {
-                lastType = d.matiere_type;
-                rows.push(
-                  <tr key={`grp-${d.matiere_type}`}>
-                    <td colSpan={9} style={{
-                      ...thStyle, textAlign: 'left',
-                      background: '#c8d8f0', fontWeight: 'bold',
-                      fontSize: '11px', textTransform: 'uppercase',
-                      letterSpacing: '1px', padding: '4px 6px',
-                    }}>
-                      {GROUP_LABELS[d.matiere_type] || d.matiere_type}
-                    </td>
-                  </tr>
-                );
-              }
-              rows.push(
-                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                  <td style={leftTd}>{d.matiere}</td>
-                  <td style={tdStyle}>{fmt(d.devoir)}</td>
-                  <td style={tdStyle}>{fmt(d.composition)}</td>
-                  <td style={{ ...tdStyle, fontWeight: 'bold',
-                    color: (d.moy_20 ?? 0) >= 10 ? '#006600' : '#cc0000' }}>
-                    {fmt(d.moy_20)}
+          {parGroupe.map((g) => {
+            const mg = moyenneGroupe(g.lignes);
+            return [
+              <tr key={`g-${g.type}`}>
+                <td colSpan={9} style={{ ...gauche, padding: '4px 8px', background: '#fff', borderLeft: `3px solid ${c.main}` }}>
+                  <span style={{ fontWeight: 800, fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.6px', color: c.darker }}>
+                    {GROUPES[g.type] || g.type}
+                  </span>
+                  {mg != null && (
+                    <span style={{ float: 'right', fontSize: '10.5px', color: '#4a5260' }}>
+                      Moyenne du groupe : <strong style={{ color: couleurMoy(mg) }}>{mg.toFixed(2)}</strong>
+                    </span>
+                  )}
+                </td>
+              </tr>,
+              ...g.lignes.map((d, i) => (
+                <tr key={`${g.type}-${d.matiere}`} style={{ background: i % 2 ? '#fafbfc' : '#fff' }}>
+                  <td style={{ ...gauche, fontWeight: 600, paddingLeft: 11 }}>{d.matiere}</td>
+                  <td style={td}>{fmt(d.devoir)}</td>
+                  <td style={td}>{fmt(d.composition)}</td>
+                  <td style={{ ...td, fontWeight: 800, color: couleurMoy(d.moy_20) }}>{fmt(d.moy_20)}</td>
+                  <td style={td}>{d.coef}</td>
+                  <td style={td}>{fmt(d.moy_coef)}</td>
+                  <td style={td}>{rangTexte(d.rang)}</td>
+                  <td style={{ ...gauche, fontSize: '11px' }}>{d.appreciation}</td>
+                  <td style={{ ...td, padding: 1 }}>
+                    {d.enseignant_signature_url && (
+                      <img src={d.enseignant_signature_url} alt="" crossOrigin="anonymous"
+                        style={{ height: 24, maxWidth: '100%', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+                    )}
                   </td>
-                  <td style={tdStyle}>{d.coef}</td>
-                  <td style={tdStyle}>{fmt(d.moy_coef)}</td>
-                  <td style={tdStyle}>{d.rang ?? '—'}</td>
-                  <td style={{ ...tdStyle, padding: '1px' }}>
-                    {d.enseignant_signature_url ? (
-                      <img
-                        src={d.enseignant_signature_url}
-                        alt="sig"
-                        style={{ height: 28, maxWidth: '100%', objectFit: 'contain', display: 'block', margin: '0 auto' }}
-                        crossOrigin="anonymous"
-                      />
-                    ) : null}
-                  </td>
-                  <td style={leftTd}>{d.appreciation}</td>
                 </tr>
-              );
-            });
-            return rows;
-          })()}
-          {/* TOTAL */}
-          <tr style={{ background: '#e8e8e8' }}>
-            <td colSpan={4} style={{ ...leftTd, fontWeight: 'bold' }}>TOTAL</td>
-            <td style={{ ...tdStyle, fontWeight: 'bold' }}>{data.total_coef}</td>
-            <td style={{ ...tdStyle, fontWeight: 'bold' }}>{data.total_moy_coef}</td>
-            <td style={tdStyle}></td>
-            <td style={tdStyle}></td>
-            <td style={tdStyle}></td>
-          </tr>
-          {/* MOYENNE */}
-          <tr style={{ background: '#dde' }}>
-            <td style={{ ...leftTd, fontWeight: 'bold' }}>Moyenne</td>
-            <td colSpan={2} style={{ ...tdStyle, fontWeight: 'bold', fontSize: '13px',
-              color: data.moyenne_generale >= 10 ? '#006600' : '#cc0000' }}>
-              {data.moyenne_generale} /20
-            </td>
-            <td style={tdStyle}></td>
-            <td style={tdStyle}></td>
-            <td style={tdStyle}></td>
-            <td style={{ ...tdStyle, fontWeight: 'bold' }}>
-              Rang {data.rang_general ?? '—'}
-            </td>
-            <td style={tdStyle}></td>
-            <td style={{ ...tdStyle, fontSize: '11px' }}>
-              Absences : {data.absences} &nbsp;|&nbsp; Retards : {data.retards}
-            </td>
+              )),
+            ];
+          })}
+          <tr style={{ background: '#f1f3f6' }}>
+            <td colSpan={4} style={{ ...gauche, fontWeight: 800, paddingLeft: 8 }}>Total</td>
+            <td style={{ ...td, fontWeight: 800 }}>{data.total_coef}</td>
+            <td style={{ ...td, fontWeight: 800 }}>{fmt(data.total_moy_coef)}</td>
+            <td colSpan={3} style={td} />
           </tr>
         </tbody>
       </table>
 
-      {/* ─── MENTIONS ─── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', fontSize: '12px' }}>
+      {/* ─── Résultats du trimestre ─── */}
+      <table style={{ width: 'calc(100% + 16px)', borderCollapse: 'separate', borderSpacing: '8px 0', margin: '0 -8px 10px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
         <tbody>
           <tr>
-            <td style={{ width: '50%', verticalAlign: 'top', paddingRight: '8px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  {MENTIONS_LEFT.map(m => (
-                    <tr key={m}>
-                      <td style={{ border: '1px solid #aaa', padding: '3px 6px' }}>{m}</td>
-                      <td style={{ border: '1px solid #aaa', width: '30px', textAlign: 'center', fontWeight: 'bold' }}>
-                        {mention === m ? 'X' : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </td>
-            <td style={{ width: '50%', verticalAlign: 'top' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  {MENTIONS_RIGHT.map(m => (
-                    <tr key={m}>
-                      <td style={{ border: '1px solid #aaa', padding: '3px 6px' }}>{m}</td>
-                      <td style={{ border: '1px solid #aaa', width: '30px', textAlign: 'center', fontWeight: 'bold' }}>
-                        {mention === m ? 'X' : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* ─── OBSERVATIONS + SIGNATURES ─── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-        <tbody>
-          <tr>
-            {/* Observations */}
-            <td style={{ width: '40%', border: '1px solid #aaa', padding: '6px', verticalAlign: 'top', height: '90px' }}>
-              <strong>Observations du conseil des professeurs :</strong><br />&nbsp;
-            </td>
-
-            {/* Professeur Principal */}
-            <td style={{ width: '30%', border: '1px solid #aaa', padding: '6px', textAlign: 'center', verticalAlign: 'top' }}>
-              <strong style={{ fontSize: '11px' }}>Le Professeur Principal</strong><br />
-              {data.professeur_principal?.signature_url ? (
-                <img
-                  src={data.professeur_principal.signature_url}
-                  alt="Cachet PP"
-                  style={{ maxWidth: '100%', height: 50, objectFit: 'contain', margin: '4px auto', display: 'block' }}
-                  crossOrigin="anonymous"
-                />
-              ) : (
-                <div style={{ height: 50 }} />
-              )}
-              <div style={{ borderTop: '1px solid #aaa', marginTop: 2, paddingTop: 2, fontSize: '11px' }}>
-                {data.professeur_principal?.prenom} {data.professeur_principal?.nom || ''}
+            <td style={{ ...encadre, width: '26%', textAlign: 'center', background: c.lighter, borderColor: c.light }}>
+              <div style={{ ...etiquette, color: c.darker }}>Moyenne du trimestre</div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: couleurMoy(data.moyenne_generale) }}>
+                {fmt(data.moyenne_generale)}<span style={{ fontSize: '12px', color: '#4a5260' }}> / 20</span>
               </div>
             </td>
+            <td style={{ ...encadre, width: '18%', textAlign: 'center' }}>
+              <div style={etiquette}>Rang</div>
+              <div style={{ fontSize: '20px', fontWeight: 800 }}>
+                {rangTexte(data.rang_general, fille)}<span style={{ fontSize: '11px', color: '#4a5260', fontWeight: 600 }}> / {data.nb_eleves ?? '—'}</span>
+              </div>
+            </td>
+            <td style={{ ...encadre, width: '34%' }}>
+              <div style={{ ...etiquette, marginBottom: 3 }}>Résultats de la classe</div>
+              {stats ? (
+                <div style={{ fontSize: '11.5px', lineHeight: 1.6 }}>
+                  Moyenne de la classe : <strong>{fmt(stats.moyenne)}</strong><br />
+                  Plus forte : <strong>{fmt(stats.plus_forte)}</strong> · Plus faible : <strong>{fmt(stats.plus_faible)}</strong>
+                </div>
+              ) : <div style={{ fontSize: '11.5px', color: '#8a919c' }}>—</div>}
+            </td>
+            <td style={{ ...encadre, width: '22%' }}>
+              <div style={{ ...etiquette, marginBottom: 3 }}>Assiduité</div>
+              <div style={{ fontSize: '11.5px', lineHeight: 1.6 }}>
+                Absences : <strong>{data.absences ?? 0}</strong>
+                {data.absences_justifiees > 0 && ` (dont ${data.absences_justifiees} justifiée${data.absences_justifiees > 1 ? 's' : ''})`}<br />Retards : <strong>{data.retards ?? 0}</strong>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-            {/* Chef d'Établissement */}
-            <td style={{ width: '30%', border: '1px solid #aaa', padding: '6px', textAlign: 'center', verticalAlign: 'top' }}>
-              <strong style={{ fontSize: '11px' }}>Le Chef d'Établissement</strong><br />
-              <div style={{ position: 'relative', display: 'inline-block', height: 95, width: '100%' }}>
-                {ecole.signature_url && (
-                  <img
-                    src={ecole.signature_url}
-                    alt="Signature Directeur"
-                    style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', height: 40, maxWidth: '90%', objectFit: 'contain' }}
-                    crossOrigin="anonymous"
-                  />
+      {data.est_trimestre_3 && data.moyennes_annuelles && (
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
+          <thead>
+            <tr><th colSpan={5} style={{ ...th, textAlign: 'left', paddingLeft: 8 }}>Bilan de l’année</th></tr>
+            <tr>
+              {['1er trimestre', '2e trimestre', '3e trimestre', 'Moyenne annuelle', 'Décision du conseil'].map((t) => (
+                <th key={t} style={{ ...td, fontWeight: 700, fontSize: '10.5px', background: '#eef0f3' }}>{t}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={td}>{fmt(data.moyennes_annuelles.t1)}</td>
+              <td style={td}>{fmt(data.moyennes_annuelles.t2)}</td>
+              <td style={td}>{fmt(data.moyennes_annuelles.t3)}</td>
+              <td style={{ ...td, fontWeight: 800, fontSize: '13px', color: (data.moyennes_annuelles.annuelle ?? 0) >= (data.decision?.seuil ?? 10) ? '#0b6b2f' : '#b42318' }}>
+                {fmt(data.moyennes_annuelles.annuelle)} / 20
+              </td>
+              <td style={{ ...gauche, fontWeight: 800 }}>
+                {data.decision?.libelle || '—'}
+                {data.decision?.detail && <div style={{ fontWeight: 400, fontSize: '10px', marginTop: 2 }}>{data.decision.detail}</div>}
+                {data.decision?.seuil != null && !data.decision?.niveau_examen && (
+                  <div style={{ fontWeight: 400, fontSize: '10px' }}>Seuil : {data.decision.seuil}/20 (moyenne des 3 trimestres)</div>
                 )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+
+      {/* ─── Mentions du conseil ─── */}
+      <div style={{ ...encadre, marginBottom: 10 }}>
+        <div style={{ ...etiquette, marginBottom: 5 }}>Décision du conseil de classe</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {MENTIONS_RIGHT.map((m, i) => (
+              <tr key={m}>
+                {[m, MENTIONS_LEFT[i]].map((x) => x && (
+                  <td key={x} style={{ width: '50%', padding: '2px 0', fontSize: '11.5px' }}>
+                    <span style={{
+                      display: 'inline-block', width: 12, height: 12, border: `1.5px solid ${mention === x ? c.dark : '#8a919c'}`, borderRadius: 2,
+                      marginRight: 7, verticalAlign: '-2px', textAlign: 'center', lineHeight: '11px', fontSize: '11px', fontWeight: 800,
+                      color: '#fff', background: mention === x ? c.dark : 'transparent', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
+                    }}>{mention === x ? '✓' : ''}</span>
+                    <span style={{ fontWeight: mention === x ? 800 : 400 }}>{x}</span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ─── Observations et signatures ─── */}
+      <table style={{ width: 'calc(100% + 16px)', borderCollapse: 'separate', borderSpacing: '8px 0', margin: '0 -8px' }}>
+        <tbody>
+          <tr>
+            <td style={{ ...encadre, width: '38%', verticalAlign: 'top', height: 110 }}>
+              <div style={etiquette}>Observations du conseil des professeurs</div>
+            </td>
+            <td style={{ ...encadre, width: '30%', verticalAlign: 'top', textAlign: 'center' }}>
+              <div style={etiquette}>Le professeur principal</div>
+              {data.professeur_principal?.signature_url
+                ? <img src={data.professeur_principal.signature_url} alt="" crossOrigin="anonymous" style={{ maxWidth: '100%', height: 52, objectFit: 'contain', margin: '6px auto 2px', display: 'block' }} />
+                : <div style={{ height: 60 }} />}
+              <div style={{ borderTop: `1px solid ${bord}`, paddingTop: 3, fontSize: '11px', fontWeight: 700 }}>
+                {[data.professeur_principal?.prenom, data.professeur_principal?.nom].filter(Boolean).join(' ') || ' '}
+              </div>
+            </td>
+            <td style={{ ...encadre, width: '32%', verticalAlign: 'top', textAlign: 'center' }}>
+              <div style={etiquette}>Le chef d’établissement</div>
+              <div style={{ fontSize: '10px', color: '#4a5260', marginTop: 2 }}>{ville ? `Fait à ${ville}, le ${aujourdhui}` : `Le ${aujourdhui}`}</div>
+              <div style={{ position: 'relative', height: 66 }}>
                 {ecole.tampon_url && (
-                  <img
-                    src={ecole.tampon_url}
-                    alt="Tampon"
-                    style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', height: 55, maxWidth: '80%', objectFit: 'contain', opacity: 0.85 }}
-                    crossOrigin="anonymous"
-                  />
+                  <img src={ecole.tampon_url} alt="" crossOrigin="anonymous"
+                    style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', height: 62, maxWidth: '80%', objectFit: 'contain', opacity: 0.85 }} />
                 )}
-                {!ecole.signature_url && !ecole.tampon_url && <div style={{ height: 95 }} />}
+                {ecole.signature_url && (
+                  <img src={ecole.signature_url} alt="" crossOrigin="anonymous"
+                    style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', height: 40, maxWidth: '90%', objectFit: 'contain' }} />
+                )}
               </div>
-              <div style={{ borderTop: '1px solid #aaa', marginTop: 2, paddingTop: 2, fontSize: '11px' }}>
-                {ecole.directeur || ''}
-              </div>
+              <div style={{ borderTop: `1px solid ${bord}`, paddingTop: 3, fontSize: '11px', fontWeight: 700 }}>{ecole.directeur || ' '}</div>
             </td>
           </tr>
         </tbody>
       </table>
-    </Box>
+
+      <div style={{ marginTop: 10, paddingTop: 6, borderTop: `1px solid ${bord}`, fontSize: '9.5px', color: '#6b7280', textAlign: 'center' }}>
+        Bulletin à conserver soigneusement : il ne sera pas délivré de duplicata. · {ecole.nom_ecole || ''}
+      </div>
+    </div>
   );
 }
 
 // ─── Classement (palmarès) imprimable d'une classe, du 1er au dernier ─
-export function ClassementPrint({ data, ecole = {} }) {
+export function ClassementPrint(props) {
+  return <ScrollableDoc><ClassementPrintDoc {...props} /></ScrollableDoc>;
+}
+
+function ClassementPrintDoc({ data, ecole = {} }) {
   const tdStyle = { border: '1px solid #333', padding: '3px 6px', fontSize: '12px', textAlign: 'center' };
   const thStyle = { ...tdStyle, background: '#f0f0f0', fontWeight: 'bold' };
   const leftTd = { ...tdStyle, textAlign: 'left' };
@@ -430,6 +426,8 @@ export default function Bulletin() {
   const [bulletinData, setBulletinData] = useState(null);
   const [selectedClasse, setSelectedClasse] = useState('');
   const [selectedTrimestre, setSelectedTrimestre] = useState('');
+  const [annees, setAnnees] = useState([]);
+  const [selectedAnnee, setSelectedAnnee] = useState('');
   const [selectedEleve, setSelectedEleve] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -438,15 +436,28 @@ export default function Bulletin() {
   const [classementData, setClassementData] = useState(null);
   const [loadingClassement, setLoadingClassement] = useState(false);
   const [errorClassement, setErrorClassement] = useState('');
+  const [publishMsg, setPublishMsg] = useState('');
 
   const role = authService.getRole();
   const isAdminOrEnseignant = role === 'ADMIN' || role === 'ENSEIGNANT';
 
   useEffect(() => {
-    trimestreService.getAll().then(res => setTrimestres(res.data));
+    trimestreService.getAll().then(res => {
+      const items = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+      setTrimestres(items);
+      const actif = items.find(t => t.annee_active && t.is_active) || items.find(t => t.annee_active) || items[0];
+      if (actif) { setSelectedTrimestre(actif.id); setSelectedAnnee(actif.annee_scolaire); }
+    });
+    anneeService.getAll().then(res => {
+      const items = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+      setAnnees([...items].sort((a, b) => String(b.libelle).localeCompare(String(a.libelle))));
+    }).catch(() => {});
     parametresService.get().then(res => setEcole(res.data)).catch(() => {});
     if (isAdminOrEnseignant) {
-      classeService.getAll().then(res => setClasses(res.data));
+      classeService.getAll().then(res => {
+        const items = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
+        setClasses(items);
+      });
     } else {
       api.get('/auth/me/').then(res => {
         const eleveId = res.data.eleve;
@@ -490,44 +501,56 @@ export default function Bulletin() {
       .finally(() => setLoading(false));
   };
 
-  const handlePrint = () => {
-    const content = document.getElementById('bulletin-print');
-    if (!content) return;
-    const w = window.open('', '_blank');
-    w.document.write(`<html><head><title>Bulletin</title>
-      <style>body{margin:0;font-family:Arial,sans-serif;}@media print{body{margin:0;}}</style>
-      </head><body>${content.outerHTML}</body></html>`);
-    w.document.close(); w.focus(); w.print(); w.close();
+  // L'année en cours est proposée par défaut ; le directeur peut choisir n'importe quelle autre année
+  const trimestresVisibles = trimestres.filter(t => !selectedAnnee || t.annee_scolaire === selectedAnnee);
+
+  const changerAnnee = (id) => {
+    setSelectedAnnee(id);
+    const premier = trimestres.find(t => t.annee_scolaire === id);
+    setSelectedTrimestre(premier ? premier.id : '');
+    setBulletinData(null);
+    setClassementData(null);
   };
 
-  const handleDownloadPDF = async () => {
-    const content = document.getElementById('bulletin-print');
-    if (!content) return;
+  const trimestreChoisi = trimestres.find(t => t.id === selectedTrimestre);
+  const bulletinsOuverts = !!trimestreChoisi?.bulletins_ouverts;
+
+  const basculerOuverture = async (ouverts) => {
     try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import('jspdf'), import('html2canvas')
-      ]);
-      const canvas = await html2canvas(content, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
-      let yPos = 0;
-      let heightLeft = imgH;
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, pageW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        yPos = heightLeft - imgH;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, yPos, pageW, imgH);
-        heightLeft -= pageH;
-      }
-      const nom = bulletinData?.eleve ? `${bulletinData.eleve.nom}_${bulletinData.eleve.prenom}` : 'eleve';
-      const trim = bulletinData?.trimestre?.nom?.replace(/\s+/g, '_') || 'T1';
-      pdf.save(`bulletin_${nom}_${trim}.pdf`);
+      const res = await trimestreService.ouvrirBulletins(selectedTrimestre, ouverts);
+      setTrimestres(prev => prev.map(t => (t.id === res.data.id ? { ...t, bulletins_ouverts: res.data.bulletins_ouverts } : t)));
+      setPublishMsg(ouverts
+        ? 'Bulletins ouverts : les élèves et les parents peuvent maintenant les consulter pour ce trimestre.'
+        : 'Bulletins fermés : les élèves et les parents ne les voient plus.');
+    } catch {
+      setError("Impossible de modifier l'ouverture des bulletins.");
+    }
+  };
+
+  const handlePublier = async () => {
+    if (!selectedTrimestre) return;
+    try {
+      const res = await bulletinService.publier({
+        trimestre_id: selectedTrimestre,
+        classe_id: selectedClasse || undefined,
+      });
+      setPublishMsg(`Bulletin annoncé. Le parent voit le message dans son espace Messages (${res.data.envoyes} message(s)).`);
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Impossible de publier le bulletin.');
+    }
+  };
+
+  const handlePrint = () => imprimerBulletin('bulletin-print', 'Bulletin de notes');
+
+  const handleDownloadPDF = async () => {
+    if (!selectedEleve || !selectedTrimestre) return;
+    const nom = bulletinData?.eleve ? `${bulletinData.eleve.nom}_${bulletinData.eleve.prenom}` : 'eleve';
+    const trim = bulletinData?.trimestre?.nom?.replace(/\s+/g, '_') || 'T1';
+    try {
+      await bulletinService.telechargerPdf(selectedEleve, selectedTrimestre, `bulletin_${nom}_${trim}.pdf`);
     } catch (e) {
       console.error('Erreur PDF:', e);
+      setError('Impossible de télécharger le bulletin PDF.');
     }
   };
 
@@ -577,17 +600,39 @@ export default function Bulletin() {
       {/* ─── Sélecteurs (non imprimés) ─── */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">Bulletin de Notes</Typography>
-        {bulletinData && (
-          <Box display="flex" gap={1}>
-            <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-              Imprimer
+        <Box display="flex" gap={1} flexWrap="wrap">
+          {role === 'ADMIN' && (
+            <Button size="small" variant="outlined" color="secondary" onClick={handlePublier}
+              disabled={!selectedTrimestre || !bulletinsOuverts}>
+              Annoncer aux parents
             </Button>
-            <Button size="small" variant="contained" startIcon={<DownloadIcon />} onClick={handleDownloadPDF}>
-              PDF
-            </Button>
-          </Box>
-        )}
+          )}
+          {bulletinData && (
+            <>
+              <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+                Imprimer
+              </Button>
+              <Button size="small" variant="contained" startIcon={<DownloadIcon />} onClick={handleDownloadPDF}>
+                PDF
+              </Button>
+            </>
+          )}
+        </Box>
       </Box>
+
+      {role === 'ADMIN' && selectedTrimestre && (
+        <Alert severity={bulletinsOuverts ? 'success' : 'warning'} sx={{ mb: 2, alignItems: 'center' }}
+          action={(
+            <FormControlLabel sx={{ mr: 1 }} label={bulletinsOuverts ? 'Ouverts' : 'Fermés'}
+              control={<Switch checked={bulletinsOuverts} onChange={e => basculerOuverture(e.target.checked)} />} />
+          )}>
+          {bulletinsOuverts
+            ? `Les élèves et les parents peuvent consulter les bulletins du ${trimestreChoisi?.nom}.`
+            : `Les élèves et les parents ne voient pas encore les bulletins du ${trimestreChoisi?.nom}. Ouvrez-les quand ils sont prêts.`}
+        </Alert>
+      )}
+
+      {publishMsg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setPublishMsg('')}>{publishMsg}</Alert>}
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -618,13 +663,24 @@ export default function Bulletin() {
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 {isAdminOrEnseignant ? '3. Trimestre' : 'Trimestre'}
               </Typography>
+              <TextField select fullWidth size="small" label="Année scolaire" value={selectedAnnee}
+                onChange={e => changerAnnee(e.target.value)} sx={{ mb: 1 }}>
+                {annees.map(a => (
+                  <MenuItem key={a.id} value={a.id}>{a.libelle}{a.is_active ? ' (en cours)' : ''}</MenuItem>
+                ))}
+              </TextField>
               <TextField select fullWidth size="small" value={selectedTrimestre}
                 onChange={e => { setSelectedTrimestre(e.target.value); setBulletinData(null); }}>
                 <MenuItem value=""><em>Choisir un trimestre</em></MenuItem>
-                {trimestres.map(t => (
-                  <MenuItem key={t.id} value={t.id}>{t.annee_libelle} — {t.nom}</MenuItem>
+                {trimestresVisibles.map(t => (
+                  <MenuItem key={t.id} value={t.id}>{t.nom}</MenuItem>
                 ))}
               </TextField>
+              {selectedAnnee && trimestresVisibles.length === 0 && (
+                <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                  Aucun trimestre enregistré pour cette année.
+                </Typography>
+              )}
             </Grid>
             <Grid size={{ xs: 12, md: 1 }} sx={{ display: 'flex', alignItems: 'flex-end' }}>
               <Button variant="contained" fullWidth onClick={fetchBulletin}

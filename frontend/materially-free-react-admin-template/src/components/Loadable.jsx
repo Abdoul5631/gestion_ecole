@@ -1,7 +1,35 @@
-import { Suspense } from 'react';
+import { Component, Suspense } from 'react';
 
 // project imports
 import Loader from './loader';
+import { OfflineChunkFallback } from 'pages/errors/OfflineChunkError';
+import { signalerErreur } from 'utils/signalerErreur';
+
+/**
+ * Catch les échecs de chunks lazy (hors ligne / SW périmé) avant le crash React.
+ */
+class ChunkErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    // hors ligne, c'est normal (page pas encore en cache) ; en ligne, c'est une vraie panne : on la remonte
+    if (navigator.onLine) signalerErreur(error, 'Page impossible à afficher');
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <OfflineChunkFallback />;
+    }
+    return this.props.children;
+  }
+}
 
 // ==============================|| LOADABLE - LAZY LOADING ||============================== //
 
@@ -13,8 +41,10 @@ import Loader from './loader';
  */
 export default function Loadable(Component) {
   return (props) => (
-    <Suspense fallback={<Loader />}>
-      <Component {...props} />
-    </Suspense>
+    <ChunkErrorBoundary>
+      <Suspense fallback={<Loader />}>
+        <Component {...props} />
+      </Suspense>
+    </ChunkErrorBoundary>
   );
 }

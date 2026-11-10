@@ -1,14 +1,6 @@
-import { lazy } from 'react';
+import { Navigate } from 'react-router-dom';
 
-// project imports
-import Loadable from 'components/Loadable';
 import MinimalLayout from 'layouts/minimalLayout';
-
-// pages
-const LoginPage = Loadable(lazy(() => import('views/auth/Login')));
-const RegisterPage = Loadable(lazy(() => import('views/auth/Register')));
-
-// ==============================|| PAGES ROUTES ||============================== //
 
 const PagesRoutes = {
   path: 'pages',
@@ -19,11 +11,11 @@ const PagesRoutes = {
       children: [
         {
           path: 'login',
-          element: <LoginPage />
+          element: <Navigate to="/login" replace />
         },
         {
           path: 'register',
-          element: <RegisterPage />
+          element: <Navigate to="/register" replace />
         }
       ]
     }

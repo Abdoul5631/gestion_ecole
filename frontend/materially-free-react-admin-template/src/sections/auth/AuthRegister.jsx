@@ -116,7 +116,7 @@ export default function AuthRegister({ inputSx }) {
               id="outlined-basic"
               variant="outlined"
               {...register('email', emailSchema)}
-              placeholder="example@materially.com"
+              placeholder="identifiant@ecole.bf"
               fullWidth
               label="Email Address / Username"
               error={Boolean(errors.email)}

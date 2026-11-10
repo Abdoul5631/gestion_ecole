@@ -31,8 +31,8 @@ export default function SaisieNotes() {
       eleveService.getAll()
     ])
       .then(([notesRes, evalsRes, elevesRes]) => {
-        setNotes(notesRes.data);
-        setEvaluations(evalsRes.data);
+        setNotes(getResults(notesRes).items.slice(0, 100));
+        setEvaluations(getResults(evalsRes).items);
         setEleves(getResults(elevesRes).items);
       })
       .catch(err => console.error(err))

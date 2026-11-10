@@ -7,9 +7,9 @@ import AuthLogin from 'sections/auth/AuthLogin';
 export default function Login() {
   return (
     <CommonAuthLayout
-      title="Sign in"
-      subHeading="To keep connected with us."
-      footerLink={{ title: 'Create a new account', link: '/register' }}
+      title="Connexion"
+      subHeading="Connectez-vous à votre espace école."
+      footerLink={{ title: 'Créer un compte', link: '/register' }}
     >
       {/* Login form */}
       <AuthLogin />

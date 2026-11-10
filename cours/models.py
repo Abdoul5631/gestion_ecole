@@ -5,7 +5,12 @@ class Enseignant(models.Model):
     nom = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
     prenom    = models.CharField(max_length=100, blank=True, default='')
+    telephone = models.CharField(max_length=20, blank=True, default='')
     signature = models.ImageField(upload_to='signatures_enseignants/', null=True, blank=True)
+    ecole = models.ForeignKey(
+        'parametres.Parametres', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='enseignants',
+    )
 
     class Meta:
         db_table = 'enseignant'
@@ -21,12 +26,18 @@ class Matiere(models.Model):
         ('LITTERATURE', 'Littérature'),
         ('AUTRES', 'Autres'),
     ]
-    nom = models.CharField(max_length=100, unique=True)
+    nom = models.CharField(max_length=100)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='SCIENTIFIQUE')
+    is_active = models.BooleanField(default=True)
+    ecole = models.ForeignKey(
+        'parametres.Parametres', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='matieres',
+    )
 
     class Meta:
         db_table = 'matiere'
         ordering = ['nom']
+        unique_together = [['nom', 'ecole']]
 
     def __str__(self):
         return self.nom
@@ -46,6 +57,10 @@ class ClasseMatiere(models.Model):
     )
     coef = models.FloatField(default=1.0)
     is_active = models.BooleanField(default=True)
+    ecole = models.ForeignKey(
+        'parametres.Parametres', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='classe_matieres',
+    )
 
     class Meta:
         db_table = 'classe_matiere'
@@ -67,6 +82,11 @@ class EmploiDuTemps(models.Model):
     heure_debut = models.TimeField()
     heure_fin = models.TimeField()
     salle = models.CharField(max_length=50, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    ecole = models.ForeignKey(
+        'parametres.Parametres', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='emplois_du_temps',
+    )
 
     class Meta:
         db_table = 'emploi_du_temps'
@@ -75,3 +95,27 @@ class EmploiDuTemps(models.Model):
 
     def __str__(self):
         return f"{self.classe_matiere} – {self.jour} {self.heure_debut}"
+
+
+class Exercice(models.Model):
+    """Exercice / travail à faire donné par un enseignant à une classe (matière + classe)."""
+    classe_matiere = models.ForeignKey(
+        ClasseMatiere, on_delete=models.CASCADE, related_name='exercices'
+    )
+    titre = models.CharField(max_length=160)
+    consigne = models.TextField(blank=True, default='')
+    fichier = models.FileField(upload_to='exercices/', null=True, blank=True)
+    date_limite = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    ecole = models.ForeignKey(
+        'parametres.Parametres', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='exercices',
+    )
+
+    class Meta:
+        db_table = 'exercice'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.titre} – {self.classe_matiere}"

@@ -5,19 +5,19 @@ import {
   TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, Chip, CircularProgress, TextField, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Grid, MenuItem, Alert, IconButton, Tooltip,
-  Select, InputLabel, FormControl, OutlinedInput, ListItemText, Checkbox
+  Grid, MenuItem, Alert,
+  Select, InputLabel, FormControl, OutlinedInput, ListItemText, Checkbox, Tooltip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import PauseCircleIcon from '@mui/icons-material/PauseCircle';
-import PlayCircleIcon from '@mui/icons-material/PlayCircle';
+import { alpha } from '@mui/material/styles';
 import useIsMobile from 'hooks/useIsMobile';
 
 const NEW_MATIERE = '__new__';
-const initForm = { classes: [], matiere: '', enseignant: '', coef: 1.0 };
+const PALETTE_NIVEAUX = ['#1a9aa5', '#e0731a', '#2f9e44', '#3b6fd4', '#c0392b', '#7b3fa0', '#6d4c41', '#0f766e'];
+const initForm = { classes: [], matiere: '', enseignant: '', coef: 1.0, coefs: {} }; // coefs : un coefficient par classe
 const initNew = { nom: '', type: 'SCIENTIFIQUE' };
 
 const typeLabel = (type) => {
@@ -25,10 +25,11 @@ const typeLabel = (type) => {
   if (type === 'LITTERATURE') return 'Littérature';
   return 'Autres';
 };
-const typeColor = (type) => {
-  if (type === 'SCIENTIFIQUE') return 'primary';
-  if (type === 'LITTERATURE') return 'secondary';
-  return 'default';
+// Pastille douce (fond léger + texte de la couleur) plutôt qu'un aplat saturé
+const typeChipSx = (type) => {
+  const palette = type === 'SCIENTIFIQUE' ? 'primary' : type === 'LITTERATURE' ? 'secondary' : null;
+  if (!palette) return { fontWeight: 600, color: 'text.secondary', bgcolor: 'action.hover' };
+  return { fontWeight: 600, color: `${palette}.main`, bgcolor: (t) => alpha(t.palette[palette].main, 0.1) };
 };
 
 export default function ListeCours() {
@@ -48,7 +49,7 @@ export default function ListeCours() {
   const [newMatiere, setNewMatiere] = useState(initNew);
 
   // Pour le formulaire d'édition (classe unique)
-  const [editForm, setEditForm] = useState({ classe: '', matiere: '', enseignant: '' });
+  const [editForm, setEditForm] = useState({ classe: '', matiere: '', enseignant: '', coef: 1 });
 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
@@ -77,10 +78,10 @@ export default function ListeCours() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Niveaux déduits des classes (sans appel API supplémentaire)
+  // Niveaux déduits des classes, dans l'ordre où l'école les a définis
   const niveaux = [...new Map(
     classes.map(c => [c.niveau, { id: c.niveau, nom: c.niveau_nom }])
-  ).values()].sort((a, b) => a.nom.localeCompare(b.nom));
+  ).values()];
 
   const filtered = data.filter(d => {
     const classeObj = classes.find(c => String(c.id) === String(d.classe));
@@ -90,14 +91,24 @@ export default function ListeCours() {
     return matchNiveau && matchSearch;
   });
 
-  // Groupement par classe dans l'ordre du tableau classes
-  const grouped = classes
-    .filter(c => !filterNiveau || String(c.niveau) === String(filterNiveau))
-    .map(c => ({
-      classe: c,
-      matieres: filtered.filter(d => String(d.classe) === String(c.id))
-    }))
-    .filter(g => g.matieres.length > 0);
+  // Une section par niveau : les matières en lignes, les classes du niveau en colonnes
+  const ORDRE_TYPE = { SCIENTIFIQUE: 0, LITTERATURE: 1, AUTRES: 2 };
+  const parNiveau = niveaux
+    .filter(n => !filterNiveau || String(n.id) === String(filterNiveau))
+    .map((n, i) => {
+      const cl = classes
+        .filter(c => String(c.niveau) === String(n.id))
+        .sort((a, b) => String(a.nom_complet).localeCompare(String(b.nom_complet), 'fr', { numeric: true }));
+      const lignes = new Map();
+      filtered.filter(d => cl.some(c => String(c.id) === String(d.classe))).forEach(d => {
+        if (!lignes.has(d.matiere)) lignes.set(d.matiere, { matiere: d.matiere, nom: d.matiere_nom, type: d.matiere_type, cellules: {} });
+        lignes.get(d.matiere).cellules[d.classe] = d;
+      });
+      const rows = [...lignes.values()].sort((a, b) =>
+        ((ORDRE_TYPE[a.type] ?? 3) - (ORDRE_TYPE[b.type] ?? 3)) || a.nom.localeCompare(b.nom, 'fr'));
+      return { niveau: n, couleur: PALETTE_NIVEAUX[i % PALETTE_NIVEAUX.length], classes: cl, lignes: rows };
+    })
+    .filter(g => g.lignes.length > 0);
 
   const handleCreate = async () => {
     setSaving(true);
@@ -129,7 +140,7 @@ export default function ListeCours() {
 
       const results = await Promise.allSettled(
         form.classes.map(classeId => {
-          const payload = { classe: classeId, matiere: matiereId, coef: parseFloat(form.coef) || 1.0 };
+          const payload = { classe: classeId, matiere: matiereId, coef: parseFloat(form.coefs[classeId] ?? form.coef) || 1.0 };
           if (form.enseignant) payload.enseignant = form.enseignant;
           return classeMatiereService.create(payload);
         })
@@ -168,21 +179,23 @@ export default function ListeCours() {
 
   const handleOpenEdit = (d) => {
     setSelected(d);
-    setEditForm({ classe: d.classe, matiere: d.matiere, enseignant: d.enseignant || '' });
+    setEditForm({ classe: d.classe, matiere: d.matiere, enseignant: d.enseignant || '', coef: d.coef ?? 1 });
     setError('');
     setEditOpen(true);
   };
 
   const handleUpdate = async () => {
+    const coef = parseFloat(editForm.coef);
+    if (!(coef > 0 && coef <= 20)) { setError('Le coefficient doit être un nombre entre 0,5 et 20.'); return; }
     setSaving(true);
     setError('');
     try {
       const payload = {
         classe: editForm.classe,
         matiere: editForm.matiere,
-        coef: selected.coef,
+        coef: parseFloat(editForm.coef),
+        enseignant: editForm.enseignant || null, // « Aucun » retire bien l'enseignant
       };
-      if (editForm.enseignant) payload.enseignant = editForm.enseignant;
       await classeMatiereService.update(selected.id, payload);
       setSuccess('Matière modifiée !');
       setEditOpen(false);
@@ -215,7 +228,7 @@ export default function ListeCours() {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={1} flexWrap="wrap">
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Matières par Classe</Typography>
+        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Matières par niveau</Typography>
         <Button size="small" variant="contained" startIcon={<AddIcon />}
           onClick={() => { setForm(initForm); setNewMatiere(initNew); setError(''); setOpen(true); }}>
           Ajouter une Matière
@@ -250,83 +263,63 @@ export default function ListeCours() {
 
       {loading ? (
         <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
-      ) : grouped.length === 0 ? (
+      ) : parNiveau.length === 0 ? (
         <Alert severity="info">Aucune matière trouvée.</Alert>
       ) : (
         <Box display="flex" flexDirection="column" gap={3}>
-          {grouped.map(({ classe, matieres: cms }) => (
-            <Paper key={classe.id} elevation={3} sx={{ overflow: 'hidden' }}>
-              {/* En-tête classe */}
+          {parNiveau.map(({ niveau, couleur, classes: cl, lignes }) => (
+            <Paper key={niveau.id} variant="outlined" sx={{ overflow: 'hidden', borderRadius: 2 }}>
               <Box sx={{
-                bgcolor: 'primary.main', px: 3, py: 1.5,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                px: 2.5, py: 1.5, borderLeft: '5px solid', borderColor: couleur,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap',
               }}>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Typography variant="h6" color="white" fontWeight="bold">
-                    {classe.nom_complet}
-                  </Typography>
-                  <Chip
-                    label={classe.niveau_nom}
-                    size="small"
-                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 'bold' }}
-                  />
+                <Typography variant="h5" fontWeight={800}>{niveau.nom}</Typography>
+                <Box display="flex" gap={1}>
+                  <Chip size="small" label={`${cl.length} classe${cl.length > 1 ? 's' : ''}`} />
+                  <Chip size="small" variant="outlined" label={`${lignes.length} matière${lignes.length > 1 ? 's' : ''}`} />
                 </Box>
-                <Chip
-                  label={`${cms.length} matière${cms.length > 1 ? 's' : ''}`}
-                  size="small"
-                  sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: 'white' }}
-                />
               </Box>
 
-              {/* Table des matières de cette classe */}
               <TableContainer>
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: 'grey.100' }}>
+                <Table size="small" data-no-stack sx={{ minWidth: 360 }}>
+                  <TableHead sx={{ '& th': { color: 'text.secondary', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, bgcolor: 'action.hover' } }}>
                     <TableRow>
-                      <TableCell><strong>Matière</strong></TableCell>
-                      <TableCell><strong>Type</strong></TableCell>
-                      <TableCell><strong>Coefficient</strong></TableCell>
-                      <TableCell><strong>Enseignant</strong></TableCell>
-                      <TableCell align="right"><strong>Actions</strong></TableCell>
+                      <TableCell sx={{ minWidth: 170, position: 'sticky', left: 0, zIndex: 2, bgcolor: 'grey.100 !important', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>Matière</TableCell>
+                      {cl.map(c => (
+                        <TableCell key={c.id} sx={{ minWidth: 118, color: `${couleur} !important`, whiteSpace: 'nowrap' }}>{c.nom_complet}</TableCell>
+                      ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {cms.map(d => (
-                      <TableRow key={d.id} hover
-                        sx={{ opacity: d.is_active ? 1 : 0.5, bgcolor: d.is_active ? 'inherit' : '#fff8e1' }}>
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Typography fontWeight="bold">{d.matiere_nom}</Typography>
-                            {!d.is_active && <Chip label="Suspendue" color="warning" size="small" />}
-                          </Box>
+                    {lignes.map(l => (
+                      <TableRow key={l.matiere} hover>
+                        <TableCell sx={{ position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.12)' }}>
+                          <Typography fontWeight={700}>{l.nom}</Typography>
+                          <Chip label={typeLabel(l.type)} size="small" sx={{ ...typeChipSx(l.type), height: 20, fontSize: 11, mt: 0.5 }} />
                         </TableCell>
-                        <TableCell>
-                          <Chip label={typeLabel(d.matiere_type)} color={typeColor(d.matiere_type)} size="small" />
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={`Coef ${d.coef}`} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell>
-                          {d.enseignant_nom || <em style={{ color: '#bbb', fontSize: 13 }}>Non assigné</em>}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Box display="flex" gap={0.5} justifyContent="flex-end">
-                            <Tooltip title="Modifier">
-                              <IconButton size="small" color="primary" onClick={() => handleOpenEdit(d)}>
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={d.is_active ? 'Suspendre' : 'Réactiver'}>
-                              <IconButton size="small"
-                                color={d.is_active ? 'warning' : 'success'}
-                                onClick={() => { setSelected(d); setSuspendOpen(true); }}>
-                                {d.is_active
-                                  ? <PauseCircleIcon fontSize="small" />
-                                  : <PlayCircleIcon fontSize="small" />}
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
+                        {cl.map(c => {
+                          const d = l.cellules[c.id];
+                          if (!d) return <TableCell key={c.id} sx={{ color: 'text.disabled' }}>—</TableCell>;
+                          return (
+                            <TableCell key={c.id}
+                              onClick={() => handleOpenEdit(d)}
+                              sx={{ cursor: 'pointer', opacity: d.is_active ? 1 : 0.5, bgcolor: d.is_active ? 'inherit' : '#fff8e1', '&:hover': { bgcolor: 'action.hover' } }}>
+                              <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={0.5}>
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography variant="body2" fontWeight={600} sx={{ color: d.enseignant_nom ? 'text.primary' : 'text.disabled', fontStyle: d.enseignant_nom ? 'normal' : 'italic' }}>
+                                    {d.enseignant_nom || 'Non assigné'}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    coef {d.coef}{!d.is_active ? ' · suspendue' : ''}
+                                  </Typography>
+                                </Box>
+                                <Tooltip title="Modifier (coefficient, enseignant, suspendre)">
+                                  <EditIcon sx={{ fontSize: 17, color: 'primary.main', mt: 0.25, flexShrink: 0 }} />
+                                </Tooltip>
+                              </Box>
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -337,7 +330,7 @@ export default function ListeCours() {
         </Box>
       )}
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-        {grouped.length} classe(s) — {filtered.length} matière(s)
+        {parNiveau.length} niveau{parNiveau.length > 1 ? 'x' : ''} — {filtered.length} affectation{filtered.length > 1 ? 's' : ''}. Cliquez sur une case (crayon) pour modifier le coefficient, l’enseignant ou suspendre la matière.
       </Typography>
 
       {/* ── Dialog Ajout ── */}
@@ -404,6 +397,22 @@ export default function ListeCours() {
               </>
             )}
 
+            {form.classes.length > 0 && (
+              <Grid size={12}>
+                <Typography variant="body2" fontWeight={700} mb={0.5}>Coefficient dans chaque classe *</Typography>
+                <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                  Il dépend de la classe : par exemple Maths 3 en Tle A et 5 en Tle D.
+                </Typography>
+                <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)' } }}>
+                  {form.classes.map(id => (
+                    <TextField key={id} size="small" type="number" label={getClassName(id)}
+                      value={form.coefs[id] ?? form.coef}
+                      onChange={e => setForm({ ...form, coefs: { ...form.coefs, [id]: e.target.value } })}
+                      inputProps={{ min: 0.5, max: 20, step: 0.5 }} />
+                  ))}
+                </Box>
+              </Grid>
+            )}
             <Grid size={12}>
               <TextField select fullWidth label="Enseignant (optionnel)" value={form.enseignant}
                 onChange={e => setForm({ ...form, enseignant: e.target.value })}>
@@ -416,7 +425,7 @@ export default function ListeCours() {
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={() => setOpen(false)} color="inherit">Annuler</Button>
           <Button variant="contained" onClick={handleCreate}
-            disabled={saving || form.classes.length === 0 || !form.matiere}>
+            disabled={saving || form.classes.length === 0 || !form.matiere || form.classes.some(id => !(parseFloat(form.coefs[id] ?? form.coef) > 0))}>
             {saving ? 'Enregistrement...' : `Affecter à ${form.classes.length || '...'} classe(s)`}
           </Button>
         </DialogActions>
@@ -428,13 +437,31 @@ export default function ListeCours() {
         <DialogContent sx={{ pt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2, mt: 1 }}>{error}</Alert>}
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid size={12}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField select fullWidth label="Classe" value={editForm.classe}
                 onChange={e => setEditForm({ ...editForm, classe: e.target.value })}>
                 {classes.map(c => <MenuItem key={c.id} value={c.id}>{c.nom}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid size={12}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select fullWidth label="Matière" value={editForm.matiere}
+                onChange={e => setEditForm({ ...editForm, matiere: e.target.value })}>
+                {matieres.map(m => <MenuItem key={m.id} value={m.id}>{m.nom}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField fullWidth type="number" label="Coefficient" value={editForm.coef}
+                onChange={e => setEditForm({ ...editForm, coef: e.target.value })}
+                inputProps={{ min: 0.5, max: 20, step: 0.5 }} />
+            </Grid>
+            {parseFloat(editForm.coef) !== parseFloat(selected?.coef) && (
+              <Grid size={12}>
+                <Alert severity="warning">
+                  Changer le coefficient modifie les moyennes et les bulletins de cette classe, y compris pour les notes déjà saisies.
+                </Alert>
+              </Grid>
+            )}
+            <Grid size={{ xs: 12, sm: 8 }}>
               <TextField select fullWidth label="Enseignant" value={editForm.enseignant}
                 onChange={e => setEditForm({ ...editForm, enseignant: e.target.value })}>
                 <MenuItem value=""><em>Aucun</em></MenuItem>
@@ -444,6 +471,11 @@ export default function ListeCours() {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
+          <Button color={selected?.is_active ? 'warning' : 'success'}
+            onClick={() => { setEditOpen(false); setSuspendOpen(true); }}>
+            {selected?.is_active ? 'Suspendre' : 'Réactiver'}
+          </Button>
+          <Box flex={1} />
           <Button onClick={() => setEditOpen(false)} color="inherit">Annuler</Button>
           <Button variant="contained" onClick={handleUpdate} disabled={saving}>
             {saving ? 'Enregistrement...' : 'Enregistrer'}

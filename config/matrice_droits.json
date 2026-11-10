@@ -1,0 +1,1430 @@
+{
+ "DELETE api/actualites/(?P<pk>[/.]+)/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "DELETE api/annees/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/appels-journaliers/(?P<pk>[/.]+)/": [
+  "SURVEILLANT"
+ ],
+ "DELETE api/caisse/ma-signature/": [
+  "COMPTABLE"
+ ],
+ "DELETE api/calendriers-composition/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/calendriers-examen-blanc/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/classe-matieres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/classes/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/deliberations/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/demandes-inscription/(?P<pk>[/.]+)/": [
+  "SECRETAIRE"
+ ],
+ "DELETE api/depenses/(?P<pk>[/.]+)/": [
+  "COMPTABLE"
+ ],
+ "DELETE api/dossiers-scolarite/(?P<pk>[/.]+)/": [],
+ "DELETE api/eleves/(?P<pk>[/.]+)/": [
+  "SECRETAIRE"
+ ],
+ "DELETE api/eleves/(?P<pk>[/.]+)/documents/(?P<doc_id>\\d+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/emploi-du-temps/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/enseignants/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/evaluations/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/exercices/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT"
+ ],
+ "DELETE api/inscriptions/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/matieres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/niveaux/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/notes/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "SECRETAIRE"
+ ],
+ "DELETE api/plateforme/accueil/photos/<int:pk>/": [
+  "SUPER_ADMIN"
+ ],
+ "DELETE api/presences/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT"
+ ],
+ "DELETE api/programmes-composition/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/programmes-examen-blanc/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "DELETE api/resultats-examen/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/tarifs/(?P<pk>[/.]+)/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "DELETE api/trimestres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "DELETE api/users/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "GET api/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "GET api/<drf_format_suffix:format>": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "GET api/accueil/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/actualites/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "GET api/actualites/(?P<pk>[/.]+)/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "GET api/annees/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/annees/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/annees/(?P<pk>[/.]+)/contenu/": [
+  "ADMIN"
+ ],
+ "GET api/annees/active/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/annonces-actives/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/appels-journaliers/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/appels-journaliers/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/auth/me/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/auth/mon-compte/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/bilan-pedagogique/": [
+  "ADMIN"
+ ],
+ "GET api/caisse/ma-signature/": [
+  "COMPTABLE"
+ ],
+ "GET api/calendriers-composition/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/calendriers-composition/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/calendriers-examen-blanc/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/calendriers-examen-blanc/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/cartes/apercu/": [
+  "SECRETAIRE"
+ ],
+ "GET api/cartes/modeles/": [
+  "SECRETAIRE"
+ ],
+ "GET api/classe-matieres/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/classe-matieres/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/classes/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/classes/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/classes/(?P<pk>[/.]+)/cartes-apercu/": [
+  "SECRETAIRE"
+ ],
+ "GET api/classes/(?P<pk>[/.]+)/cartes/": [
+  "SECRETAIRE"
+ ],
+ "GET api/classes/(?P<pk>[/.]+)/liste-pdf/": [
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/deliberations/": [
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/deliberations/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/demandes-inscription/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/demandes-inscription/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/demandes-inscription/(?P<pk>[/.]+)/pieces/(?P<piece_id>\\d+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/depenses/": [
+  "COMPTABLE"
+ ],
+ "GET api/depenses/(?P<pk>[/.]+)/": [
+  "COMPTABLE"
+ ],
+ "GET api/depenses/bilan/": [
+  "COMPTABLE"
+ ],
+ "GET api/depenses/journal/": [
+  "COMPTABLE"
+ ],
+ "GET api/dossiers-scolarite/": [
+  "ELEVE",
+  "PARENT",
+  "COMPTABLE"
+ ],
+ "GET api/dossiers-scolarite/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "COMPTABLE"
+ ],
+ "GET api/dossiers-scolarite/(?P<pk>[/.]+)/certificat-non-redevance/": [
+  "COMPTABLE"
+ ],
+ "GET api/ecole-connexion/<slug:slug>/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/ecoles/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/ecoles/<int:pk>/comptes/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/eleves/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/appels/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/carte/": [
+  "SECRETAIRE"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/documents/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/documents/(?P<doc_id>\\d+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/inscriptions/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/eleves/(?P<pk>[/.]+)/presences/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/eleves/ma-classe/": [
+  "ELEVE",
+  "PARENT"
+ ],
+ "GET api/eleves/prochain-matricule/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/eleves/template-excel/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/emploi-du-temps/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/emploi-du-temps/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/emploi-du-temps/aujourdhui/": [
+  "ENSEIGNANT"
+ ],
+ "GET api/enseignants/": [
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/enseignants/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/enseignants/(?P<pk>[/.]+)/matieres/": [
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/evaluations/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/evaluations/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/evaluations/(?P<pk>[/.]+)/notes/": [
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/evaluations/carnet/": [
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/exercices/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/exercices/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/inscriptions/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/inscriptions/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/inscriptions/passage-apercu/": [
+  "ADMIN"
+ ],
+ "GET api/journal/": [
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/journal/filtres/": [
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/maintenance/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/matieres/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/matieres/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/niveaux/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/niveaux/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/notes/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/notes/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "GET api/notes/bulletin-examen-blanc/": [
+  "ELEVE",
+  "PARENT",
+  "ADMIN"
+ ],
+ "GET api/notes/bulletin-pdf/": [
+  "ELEVE",
+  "PARENT",
+  "ADMIN"
+ ],
+ "GET api/notes/bulletin/": [
+  "ELEVE",
+  "PARENT",
+  "ADMIN"
+ ],
+ "GET api/notes/classement-examen-blanc/": [
+  "ELEVE",
+  "PARENT",
+  "ADMIN"
+ ],
+ "GET api/notes/classement/": [
+  "ADMIN"
+ ],
+ "GET api/notes/duplicata-bulletin/": [
+  "ADMIN"
+ ],
+ "GET api/notes/historique-bulletins/": [
+  "ADMIN"
+ ],
+ "GET api/notifications/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/notifications/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/notifications/non_lues/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/paiements/": [
+  "ELEVE",
+  "PARENT",
+  "COMPTABLE"
+ ],
+ "GET api/paiements/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "COMPTABLE"
+ ],
+ "GET api/parametres/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/passages-annee/": [
+  "ADMIN"
+ ],
+ "GET api/plateforme/accueil/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/annonces/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/comptes/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/comptes/<int:pk>/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/ecoles/<int:pk>/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/incidents/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/maintenance/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/tableau/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/plateforme/trafic/": [
+  "SUPER_ADMIN"
+ ],
+ "GET api/presences/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/presences/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/presences/absents-du-jour/": [
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/presences/appel-du-jour/": [
+  "ADMIN"
+ ],
+ "GET api/programmes-composition/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/programmes-composition/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/programmes-examen-blanc/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/programmes-examen-blanc/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "ADMIN"
+ ],
+ "GET api/resultats-examen/": [
+  "ADMIN"
+ ],
+ "GET api/resultats-examen/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "GET api/resultats-examen/candidats/": [
+  "ADMIN"
+ ],
+ "GET api/sante/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/sauvegarde/": [
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "GET api/sms/": [
+  "ADMIN"
+ ],
+ "GET api/sms/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "GET api/sms/config/": [
+  "ADMIN"
+ ],
+ "GET api/sms/envois/": [
+  "ADMIN"
+ ],
+ "GET api/stats/dashboard/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "GET api/tarifs/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "GET api/tarifs/(?P<pk>[/.]+)/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "GET api/trimestres/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/trimestres/(?P<pk>[/.]+)/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN"
+ ],
+ "GET api/trimestres/(?P<pk>[/.]+)/contenu/": [
+  "ADMIN"
+ ],
+ "GET api/users/": [
+  "ADMIN"
+ ],
+ "GET api/users/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "GET api/vitrine/<slug:slug>/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "PATCH api/actualites/(?P<pk>[/.]+)/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "PATCH api/annees/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/appels-journaliers/(?P<pk>[/.]+)/": [
+  "SURVEILLANT"
+ ],
+ "PATCH api/auth/mon-compte/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "PATCH api/calendriers-composition/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PATCH api/calendriers-examen-blanc/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PATCH api/classe-matieres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/classes/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/deliberations/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/demandes-inscription/(?P<pk>[/.]+)/": [
+  "SECRETAIRE"
+ ],
+ "PATCH api/depenses/(?P<pk>[/.]+)/": [
+  "COMPTABLE"
+ ],
+ "PATCH api/dossiers-scolarite/(?P<pk>[/.]+)/": [],
+ "PATCH api/eleves/(?P<pk>[/.]+)/": [
+  "SECRETAIRE"
+ ],
+ "PATCH api/eleves/(?P<pk>[/.]+)/corriger-nom/": [
+  "ADMIN"
+ ],
+ "PATCH api/emploi-du-temps/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/enseignants/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/enseignants/ma-signature/": [
+  "ENSEIGNANT"
+ ],
+ "PATCH api/evaluations/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PATCH api/exercices/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT"
+ ],
+ "PATCH api/inscriptions/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PATCH api/matieres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/niveaux/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/notes/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "SECRETAIRE"
+ ],
+ "PATCH api/plateforme/accueil/photos/<int:pk>/": [
+  "SUPER_ADMIN"
+ ],
+ "PATCH api/plateforme/annonces/<int:pk>/": [
+  "SUPER_ADMIN"
+ ],
+ "PATCH api/plateforme/comptes/<int:pk>/": [
+  "SUPER_ADMIN"
+ ],
+ "PATCH api/presences/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT"
+ ],
+ "PATCH api/programmes-composition/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PATCH api/programmes-examen-blanc/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PATCH api/resultats-examen/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/tarifs/(?P<pk>[/.]+)/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "PATCH api/trimestres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PATCH api/users/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "POST api/actualites/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "POST api/annees/": [
+  "ADMIN"
+ ],
+ "POST api/annees/(?P<pk>[/.]+)/en-cours/": [
+  "ADMIN"
+ ],
+ "POST api/appels-journaliers/": [
+  "SURVEILLANT"
+ ],
+ "POST api/appels-journaliers/saisie-masse/": [
+  "SURVEILLANT"
+ ],
+ "POST api/auth/change-password/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/auth/login/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/auth/refresh/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/caisse/ma-signature/": [
+  "COMPTABLE"
+ ],
+ "POST api/calendriers-composition/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-composition/(?P<pk>[/.]+)/publier/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-composition/(?P<pk>[/.]+)/reactiver/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-composition/(?P<pk>[/.]+)/retirer/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-examen-blanc/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-examen-blanc/(?P<pk>[/.]+)/publier/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-examen-blanc/(?P<pk>[/.]+)/reactiver/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/calendriers-examen-blanc/(?P<pk>[/.]+)/retirer/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/classe-matieres/": [
+  "ADMIN"
+ ],
+ "POST api/classe-matieres/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/classe-matieres/copier/": [
+  "ADMIN"
+ ],
+ "POST api/classes/": [
+  "ADMIN"
+ ],
+ "POST api/classes/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/deliberations/": [
+  "ADMIN"
+ ],
+ "POST api/demandes-inscription/": [
+  "SECRETAIRE"
+ ],
+ "POST api/demandes-inscription/(?P<pk>[/.]+)/accepter/": [
+  "SECRETAIRE"
+ ],
+ "POST api/demandes-inscription/(?P<pk>[/.]+)/reactiver/": [
+  "SECRETAIRE"
+ ],
+ "POST api/demandes-inscription/(?P<pk>[/.]+)/refuser/": [
+  "SECRETAIRE"
+ ],
+ "POST api/depenses/": [
+  "COMPTABLE"
+ ],
+ "POST api/depenses/(?P<pk>[/.]+)/reactiver/": [],
+ "POST api/dossiers-scolarite/": [],
+ "POST api/dossiers-scolarite/(?P<pk>[/.]+)/paiement/": [
+  "COMPTABLE"
+ ],
+ "POST api/dossiers-scolarite/informer/": [
+  "COMPTABLE"
+ ],
+ "POST api/dossiers-scolarite/ouvrir-manquants/": [
+  "COMPTABLE"
+ ],
+ "POST api/dossiers-scolarite/relancer/": [
+  "COMPTABLE"
+ ],
+ "POST api/ecoles/<int:pk>/<str:action>/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/ecoles/<int:pk>/comptes/<int:user_id>/<str:action>/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/ecoles/<int:pk>/comptes/<int:user_id>/reinitialiser/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/ecoles/inscription/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/eleves/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/eleves/(?P<pk>[/.]+)/compte-parent/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/eleves/(?P<pk>[/.]+)/documents/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/eleves/(?P<pk>[/.]+)/reactiver/": [
+  "SECRETAIRE"
+ ],
+ "POST api/eleves/creer-comptes-manquants/": [
+  "SECRETAIRE"
+ ],
+ "POST api/eleves/creer-comptes-parents/": [
+  "SECRETAIRE"
+ ],
+ "POST api/eleves/import-excel/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/emploi-du-temps/": [
+  "ADMIN"
+ ],
+ "POST api/emploi-du-temps/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/enseignants/": [
+  "ADMIN"
+ ],
+ "POST api/enseignants/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/equipe/message-secretariat/": [
+  "ENSEIGNANT"
+ ],
+ "POST api/equipe/message/": [
+  "ADMIN"
+ ],
+ "POST api/erreur-client/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/evaluations/": [
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/evaluations/generer/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/exercices/": [
+  "ENSEIGNANT"
+ ],
+ "POST api/exercices/(?P<pk>[/.]+)/reactiver/": [
+  "ENSEIGNANT"
+ ],
+ "POST api/inscriptions/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/inscriptions/(?P<pk>[/.]+)/reactiver/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/inscriptions/passage-lancer/": [
+  "ADMIN"
+ ],
+ "POST api/inscriptions/reinscription/": [
+  "SECRETAIRE"
+ ],
+ "POST api/matieres/": [
+  "ADMIN"
+ ],
+ "POST api/matieres/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/niveaux/": [
+  "ADMIN"
+ ],
+ "POST api/niveaux/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/notes/": [
+  "ENSEIGNANT",
+  "SECRETAIRE"
+ ],
+ "POST api/notes/publier-bulletin/": [
+  "ADMIN"
+ ],
+ "POST api/notes/saisie-masse/": [
+  "ENSEIGNANT",
+  "SECRETAIRE"
+ ],
+ "POST api/notifications/(?P<pk>[/.]+)/lire/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/notifications/tout-lire/": [
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "POST api/plateforme/accueil/photos/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/plateforme/annonces/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/plateforme/comptes/<int:pk>/mot-de-passe/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/plateforme/incidents/resoudre/": [
+  "SUPER_ADMIN"
+ ],
+ "POST api/presences/": [
+  "ENSEIGNANT"
+ ],
+ "POST api/presences/justifier/": [
+  "ADMIN"
+ ],
+ "POST api/presences/saisie-masse/": [
+  "ENSEIGNANT"
+ ],
+ "POST api/programmes-composition/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/programmes-examen-blanc/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "POST api/resultats-examen/": [
+  "ADMIN"
+ ],
+ "POST api/resultats-examen/importer-excel/": [
+  "ADMIN"
+ ],
+ "POST api/resultats-examen/importer-texte/": [
+  "ADMIN"
+ ],
+ "POST api/resultats-examen/saisir/": [
+  "ADMIN"
+ ],
+ "POST api/sms/envoyer/": [
+  "ADMIN"
+ ],
+ "POST api/sms/relancer/": [
+  "ADMIN"
+ ],
+ "POST api/tarifs/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "POST api/tarifs/(?P<pk>[/.]+)/reactiver/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "POST api/trimestres/": [
+  "ADMIN"
+ ],
+ "POST api/trimestres/(?P<pk>[/.]+)/bulletins/": [
+  "ADMIN"
+ ],
+ "POST api/users/": [
+  "ADMIN"
+ ],
+ "POST api/users/(?P<pk>[/.]+)/reactiver/": [
+  "ADMIN"
+ ],
+ "POST api/vitrine/<slug:slug>/dossiers/": [
+  "ANONYME",
+  "ELEVE",
+  "PARENT",
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "COMPTABLE",
+  "SURVEILLANT",
+  "COMMUNICATION",
+  "ADMIN",
+  "SUPER_ADMIN"
+ ],
+ "PUT api/actualites/(?P<pk>[/.]+)/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "PUT api/annees/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/appels-journaliers/(?P<pk>[/.]+)/": [
+  "SURVEILLANT"
+ ],
+ "PUT api/calendriers-composition/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PUT api/calendriers-examen-blanc/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PUT api/cartes/choix/": [
+  "SECRETAIRE"
+ ],
+ "PUT api/classe-matieres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/classes/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/deliberations/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/demandes-inscription/(?P<pk>[/.]+)/": [
+  "SECRETAIRE"
+ ],
+ "PUT api/depenses/(?P<pk>[/.]+)/": [
+  "COMPTABLE"
+ ],
+ "PUT api/dossiers-scolarite/(?P<pk>[/.]+)/": [],
+ "PUT api/eleves/(?P<pk>[/.]+)/": [
+  "SECRETAIRE"
+ ],
+ "PUT api/emploi-du-temps/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/enseignants/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/evaluations/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PUT api/exercices/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT"
+ ],
+ "PUT api/inscriptions/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PUT api/matieres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/niveaux/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/notes/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT",
+  "SECRETAIRE"
+ ],
+ "PUT api/parametres/": [
+  "COMMUNICATION",
+  "ADMIN"
+ ],
+ "PUT api/plateforme/accueil/": [
+  "SUPER_ADMIN"
+ ],
+ "PUT api/plateforme/maintenance/": [
+  "SUPER_ADMIN"
+ ],
+ "PUT api/presences/(?P<pk>[/.]+)/": [
+  "ENSEIGNANT"
+ ],
+ "PUT api/programmes-composition/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PUT api/programmes-examen-blanc/(?P<pk>[/.]+)/": [
+  "SECRETAIRE",
+  "ADMIN"
+ ],
+ "PUT api/resultats-examen/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/tarifs/(?P<pk>[/.]+)/": [
+  "COMPTABLE",
+  "ADMIN"
+ ],
+ "PUT api/trimestres/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ],
+ "PUT api/users/(?P<pk>[/.]+)/": [
+  "ADMIN"
+ ]
+}

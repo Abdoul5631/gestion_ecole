@@ -43,9 +43,9 @@ export default function AuthLogin({ inputSx }) {
             id="outlined-basic"
             variant="outlined"
             {...register('email', emailSchema)}
-            placeholder="example@materially.com"
+            placeholder="identifiant@ecole.bf"
             fullWidth
-            label="Email Address / Username"
+            label="Email / Identifiant"
             error={Boolean(errors.email)}
             sx={inputSx}
           />
@@ -54,14 +54,14 @@ export default function AuthLogin({ inputSx }) {
 
         <Box>
           <FormControl fullWidth error={Boolean(errors.password)}>
-            <InputLabel htmlFor="outlined-adornment-password">Password</InputLabel>
+            <InputLabel htmlFor="outlined-adornment-password">Mot de passe</InputLabel>
             <OutlinedInput
               {...register('password', passwordSchema)}
               id="outlined-adornment-password"
               type={isPasswordVisible ? 'text' : 'password'}
               name="password"
-              label="Password"
-              placeholder="Enter your password"
+              label="Mot de passe"
+              placeholder="Votre mot de passe"
               endAdornment={
                 <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsPasswordVisible(!isPasswordVisible)}>
                   {isPasswordVisible ? <Visibility /> : <VisibilityOff />}
@@ -83,14 +83,14 @@ export default function AuthLogin({ inputSx }) {
               textAlign="right"
               sx={{ '&:hover': { color: 'primary.dark' }, mt: 0.375, whiteSpace: 'nowrap' }}
             >
-              Forgot Password?
+              Mot de passe oublié ?
             </Link>
           </Stack>
         </Box>
       </Stack>
 
       <Button type="submit" variant="contained" fullWidth sx={{ minWidth: 120, mt: { xs: 2, sm: 3 }, '& .MuiButton-endIcon': { ml: 1 } }}>
-        Sign In
+        Connexion
       </Button>
     </form>
   );

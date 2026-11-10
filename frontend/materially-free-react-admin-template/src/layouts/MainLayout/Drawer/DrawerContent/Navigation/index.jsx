@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 // material-ui
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -6,6 +8,7 @@ import Box from '@mui/material/Box';
 import { getMenuItems } from 'menu-items';
 import NavGroup from './NavGroup';
 import authService from 'services/auth';
+import api from 'services/api';
 import useHasExamenBlancAccess from 'hooks/useHasExamenBlancAccess';
 
 // ==============================|| DRAWER CONTENT - RESPONSIVE DRAWER ||============================== //
@@ -13,6 +16,17 @@ import useHasExamenBlancAccess from 'hooks/useHasExamenBlancAccess';
 export default function NavigationDrawer() {
   // Lire le rôle à chaque rendu pour que le menu se mette à jour après login
   const role = authService.getRole();
+  const [, setVersion] = useState(0);
+  useEffect(() => {
+    if (!authService.isAuthenticated() || authService.isPlateforme()) return;
+    api.get('/auth/me/')
+      .then((res) => {
+        if ('ecole_couleur' in (res.data || {})) authService.setCouleurEcole(res.data.ecole_couleur);
+        authService.setIdentiteEcole(res.data || {});
+        if (Array.isArray(res.data?.roles) && authService.setRoles(res.data.roles)) setVersion((v) => v + 1);
+      })
+      .catch(() => { /* hors ligne : on garde les rôles connus */ });
+  }, []);
   const { hasAccess: hasExamenBlanc } = useHasExamenBlancAccess();
   const menuItems = getMenuItems(role, hasExamenBlanc);
 

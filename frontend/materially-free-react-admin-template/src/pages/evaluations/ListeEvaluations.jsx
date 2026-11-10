@@ -1,5 +1,6 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useEffect, useState } from 'react';
-import { evaluationService, anneeService } from '../../services/api';
+import { evaluationService, anneeService, getResults } from '../../services/api';
 import api from '../../services/api';
 import {
   Box, Card, CardContent, Typography, Table, TableBody,
@@ -10,6 +11,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import { peutSaisir } from 'utils/droits';
 
 const initForm = {
   classe_matiere: '', trimestre: '',
@@ -18,6 +20,7 @@ const initForm = {
 };
 
 export default function ListeEvaluations() {
+  const saisie = peutSaisir('pedagogie'); // le directeur consulte, l'enseignant saisit
   const [evaluations, setEvaluations] = useState([]);
   const [classeMatieres, setClasseMatieres] = useState([]);
   const [trimestres, setTrimestres] = useState([]);
@@ -37,9 +40,10 @@ export default function ListeEvaluations() {
       api.get('/trimestres/')
     ])
       .then(([evalsRes, cmRes, trimRes]) => {
-        setEvaluations(evalsRes.data);
-        setClasseMatieres(cmRes.data);
-        setTrimestres(trimRes.data);
+        setEvaluations(getResults(evalsRes).items);
+        setClasseMatieres(getResults(cmRes).items);
+        setTrimestres(trimestresEnCours(getResults(trimRes).items));
+        setForm(f => ({ ...f, trimestre: f.trimestre || idTrimestreParDefaut(getResults(trimRes).items) }));
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
@@ -63,7 +67,7 @@ export default function ListeEvaluations() {
     evaluationService.create(form)
       .then(() => {
         setSuccess('Évaluation ajoutée avec succès !');
-        setForm(initForm);
+        setForm({ ...initForm, trimestre: idTrimestreParDefaut(trimestres) });
         setOpen(false);
         fetchData();
         setTimeout(() => setSuccess(''), 3000);
@@ -86,9 +90,11 @@ export default function ListeEvaluations() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">Évaluations</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} color="primary" onClick={() => setOpen(true)}>
-          Nouvelle Évaluation
-        </Button>
+        {saisie && (
+          <Button variant="contained" startIcon={<AddIcon />} color="primary" onClick={() => setOpen(true)}>
+            Nouvelle Évaluation
+          </Button>
+        )}
       </Box>
 
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
@@ -192,10 +198,11 @@ export default function ListeEvaluations() {
                 fullWidth select label="Type" name="type"
                 value={form.type} onChange={handleChange}
               >
-                <MenuItem value="DEVOIR1">Devoir 1</MenuItem>
-                <MenuItem value="DEVOIR2">Devoir 2</MenuItem>
-                <MenuItem value="COMPOSITION">Composition</MenuItem>
-                {formIsClasseExamen && <MenuItem value="EXAMEN_BLANC">Examen Blanc</MenuItem>}
+                {[['DEVOIR1', 'Devoir 1'], ['DEVOIR2', 'Devoir 2']].map(([k, v]) => {
+                  const deja = evaluations.some(ev => String(ev.classe_matiere) === String(form.classe_matiere)
+                    && String(ev.trimestre) === String(form.trimestre) && ev.type === k);
+                  return <MenuItem key={k} value={k} disabled={deja}>{v}{deja ? ' — déjà programmé' : ''}</MenuItem>;
+                })}
               </TextField>
             </Grid>
             <Grid item xs={6}>

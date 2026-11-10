@@ -1,54 +1,86 @@
 import { useEffect, useState } from 'react';
-import { presenceService, eleveService, getResults } from '../../services/api';
+import { presenceService, eleveService, classeService, getResults } from '../../services/api';
 import api from '../../services/api';
 import {
   Box, Card, CardContent, Typography, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, Chip, CircularProgress, TextField, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Grid, MenuItem, Alert
+  Grid, MenuItem, Alert, Pagination
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
+import { peutSaisir } from 'utils/droits';
 
 const initForm = {
   eleve: '', classe_matiere: '',
   date: '', statut: 'PRESENT', motif: ''
 };
 
+const PAGE_SIZE = 100;
+
 export default function ListePresences() {
+  const saisie = peutSaisir('pedagogie'); // le directeur consulte, l'enseignant saisit
   const [presences, setPresences] = useState([]);
   const [eleves, setEleves] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [classeMatieres, setClasseMatieres] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterClasse, setFilterClasse] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initForm);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  const fetchData = () => {
+  // Liste paginée et filtrée côté serveur (17 000+ lignes en base).
+  const fetchPresences = (p = page) => {
     setLoading(true);
-    Promise.all([
-      presenceService.getAll(),
-      eleveService.getAll(),
-      api.get('/classe-matieres/')
-    ])
-      .then(([presRes, elevRes, cmRes]) => {
-        setPresences(presRes.data);
-        setEleves(getResults(elevRes).items);
-        setClasseMatieres(cmRes.data);
+    const params = new URLSearchParams({ page: p, page_size: PAGE_SIZE });
+    if (filterClasse) params.set('classe_id', filterClasse);
+    if (filterDate) params.set('date', filterDate);
+    if (searchTerm) params.set('search', searchTerm);
+    presenceService.getAll(`/presences/?${params.toString()}`)
+      .then(res => {
+        const { items, count: total } = getResults(res);
+        setPresences(items);
+        setCount(total);
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchData = () => fetchPresences(page);
 
-  const filtered = presences.filter(p =>
-    `${p.eleve_nom} ${p.eleve_prenom} ${p.statut}`.toLowerCase().includes(search.toLowerCase())
-  );
+  // Données de référence pour le formulaire d'ajout
+  useEffect(() => {
+    Promise.all([
+      eleveService.getAll('/eleves/?page_size=500'),
+      classeService.getAll(),
+      api.get('/classe-matieres/')
+    ])
+      .then(([elevRes, classRes, cmRes]) => {
+        setEleves(getResults(elevRes).items);
+        setClasses(getResults(classRes).items);
+        setClasseMatieres(getResults(cmRes).items);
+      })
+      .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(1); setSearchTerm(search); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { fetchPresences(page); }, [page, searchTerm, filterClasse, filterDate]);
+
+  const filtered = presences;
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -93,25 +125,48 @@ export default function ListePresences() {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">Présences</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} color="primary" onClick={() => setOpen(true)}>
-          Nouvelle Présence
-        </Button>
+        {saisie && (
+          <Button variant="contained" startIcon={<AddIcon />} color="primary" onClick={() => setOpen(true)}>
+            Nouvelle Présence
+          </Button>
+        )}
       </Box>
 
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
       <Card>
         <CardContent>
-          <TextField
-            fullWidth
-            placeholder="Rechercher par élève ou statut..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            sx={{ mb: 2 }}
-            InputProps={{
-              startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>
-            }}
-          />
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={{ xs: 12, md: 5 }}>
+              <TextField
+                fullWidth size="small"
+                placeholder="Rechercher par nom ou prénom d'élève..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>
+                }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                select fullWidth size="small" label="Classe"
+                value={filterClasse}
+                onChange={e => { setPage(1); setFilterClasse(e.target.value); }}
+              >
+                <MenuItem value="">Toutes les classes</MenuItem>
+                {classes.map(c => <MenuItem key={c.id} value={c.id}>{c.nom}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                fullWidth size="small" label="Date" type="date"
+                value={filterDate}
+                onChange={e => { setPage(1); setFilterDate(e.target.value); }}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+          </Grid>
           {loading ? (
             <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
           ) : (
@@ -154,9 +209,20 @@ export default function ListePresences() {
               </Table>
             </TableContainer>
           )}
-          <Typography variant="body2" color="text.secondary" mt={2}>
-            {filtered.length} présence(s) trouvée(s)
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mt={2} gap={1} flexWrap="wrap">
+            <Typography variant="body2" color="text.secondary">
+              {count} présence(s) trouvée(s) — page {page} / {totalPages}
+            </Typography>
+            {totalPages > 1 && (
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(e, v) => setPage(v)}
+                size="small"
+                color="primary"
+              />
+            )}
+          </Box>
         </CardContent>
       </Card>
 

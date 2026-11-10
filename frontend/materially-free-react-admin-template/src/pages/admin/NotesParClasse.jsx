@@ -1,8 +1,9 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Typography, Grid, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  TextField, MenuItem, CircularProgress, Alert
+  TextField, MenuItem, CircularProgress, Alert, Chip
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
@@ -11,6 +12,7 @@ import {
   classeMatiereService, evaluationService, noteService,
   eleveService, trimestreService, classeService, parametresService, getResults
 } from 'services/api';
+import { peutSaisir } from 'utils/droits';
 
 const TYPE_LABELS = { DEVOIR1: 'Devoir 1', DEVOIR2: 'Devoir 2', COMPOSITION: 'Composition', EXAMEN_BLANC: 'Examen Blanc' };
 
@@ -106,6 +108,7 @@ export function ListeNotesPrint({ ecole = {}, classeNom, matiereNom, enseignantN
 }
 
 export default function NotesParClasse() {
+  const saisie = peutSaisir('pedagogie'); // le directeur consulte, l'enseignant saisit
   const [classes, setClasses] = useState([]);
   const [classeMatieres, setClasseMatieres] = useState([]);
   const [trimestres, setTrimestres] = useState([]);
@@ -116,6 +119,7 @@ export default function NotesParClasse() {
   const [isNewEval, setIsNewEval] = useState(false);
 
   const [evaluations, setEvaluations] = useState([]);
+  const [evalsClasse, setEvalsClasse] = useState([]);
   const [eleves, setEleves] = useState([]);
   const [notesData, setNotesData] = useState({});
 
@@ -135,7 +139,8 @@ export default function NotesParClasse() {
     ]).then(([resCM, resC, resT]) => {
       setClasseMatieres(resCM.data);
       setClasses(resC.data);
-      setTrimestres(resT.data);
+      setTrimestres(trimestresEnCours(resT.data));
+      setNewEvalForm(f => ({ ...f, trimestre: f.trimestre || idTrimestreParDefaut(resT.data) }));
     });
     parametresService.get().then(res => setEcole(res.data)).catch(() => {});
   }, []);
@@ -146,6 +151,18 @@ export default function NotesParClasse() {
 
   const isClasseExamen = !!classes.find(c => String(c.id) === String(selectedClasse))?.niveau_is_classe_examen;
 
+  // Évaluations de la classe choisie (toutes matières) : proposées directement, sans choisir matière puis évaluation
+  const chargerDevoirsClasse = async (classeId) => {
+    if (!classeId) { setEvalsClasse([]); return; }
+    try {
+      const ids = new Set(classeMatieres.filter(cm => String(cm.classe) === String(classeId)).map(cm => cm.id));
+      const res = await evaluationService.getAll();
+      const liste = (Array.isArray(res.data) ? res.data : res.data.results || []).filter(ev => ids.has(ev.classe_matiere));
+      liste.sort((a, b) => String(a.trimestre_nom).localeCompare(String(b.trimestre_nom)) || String(a.matiere_nom).localeCompare(String(b.matiere_nom)));
+      setEvalsClasse(liste);
+    } catch { setEvalsClasse([]); }
+  };
+
   const handleClasseChange = (e) => {
     setSelectedClasse(e.target.value);
     setSelectedCM('');
@@ -154,6 +171,34 @@ export default function NotesParClasse() {
     setEvaluations([]);
     setEleves([]);
     setNotesData({});
+    chargerDevoirsClasse(e.target.value);
+  };
+
+  // Clic sur un devoir déjà programmé : la matière, l'évaluation et les notes se remplissent toutes seules
+  const ouvrirDevoir = async (ev) => {
+    setError(''); setSuccess('');
+    setSelectedCM(ev.classe_matiere);
+    setEvaluations(evalsClasse.filter(x => x.classe_matiere === ev.classe_matiere));
+    setSelectedEvalId(ev.id);
+    setIsNewEval(false);
+    setLoading(true);
+    try {
+      let liste = eleves;
+      if (!liste.length) {
+        const resEl = await eleveService.getAll(`/eleves/?classe_id=${selectedClasse}`);
+        liste = getResults(resEl).items;
+        setEleves(liste);
+      }
+      const init = {};
+      liste.forEach(el => { init[el.id] = 0; });
+      const res = await evaluationService.getNotes(ev.id);
+      res.data.forEach(n => { if (init[n.eleve] !== undefined) init[n.eleve] = n.valeur; });
+      setNotesData(init);
+    } catch {
+      setError('Erreur lors du chargement des notes.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCMChange = async (e) => {
@@ -251,6 +296,7 @@ export default function NotesParClasse() {
         setIsNewEval(false);
         const evRes = await evaluationService.getAll();
         setEvaluations(evRes.data.filter(ev => ev.classe_matiere === parseInt(selectedCM)));
+        chargerDevoirsClasse(selectedClasse);
       }
 
       const notes = Object.entries(notesData)
@@ -346,7 +392,7 @@ export default function NotesParClasse() {
                 value={isNewEval ? 'NEW' : selectedEvalId} onChange={handleEvalChange}
                 disabled={!selectedCM}>
                 <MenuItem value=""><em>Sélectionner</em></MenuItem>
-                <MenuItem value="NEW"><strong>+ Nouvelle évaluation</strong></MenuItem>
+                {saisie && <MenuItem value="NEW"><strong>+ Nouvelle évaluation</strong></MenuItem>}
                 {evaluations.map(ev => (
                   <MenuItem key={ev.id} value={ev.id}>
                     {ev.type} — {ev.trimestre_nom} (coef {ev.coefficient})
@@ -356,6 +402,28 @@ export default function NotesParClasse() {
             </Grid>
           </Grid>
 
+          {selectedClasse && (
+            <Box mt={3}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Devoirs et évaluations déjà programmés dans cette classe — cliquez pour ouvrir les notes
+              </Typography>
+              {evalsClasse.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Aucun devoir programmé pour l&apos;instant.{saisie ? ' Choisissez une matière puis « + Nouvelle évaluation » pour en programmer un.' : ''}
+                </Typography>
+              ) : (
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  {evalsClasse.map(ev => (
+                    <Chip key={ev.id} clickable onClick={() => ouvrirDevoir(ev)}
+                      color={String(ev.id) === String(selectedEvalId) ? 'primary' : 'default'}
+                      variant={String(ev.id) === String(selectedEvalId) ? 'filled' : 'outlined'}
+                      label={`${ev.matiere_nom} — ${TYPE_LABELS[ev.type] || ev.type} — ${ev.trimestre_nom}`} />
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+
           {isNewEval && (
             <Box mt={3} p={2} border="1px dashed #ccc" borderRadius={2}>
               <Typography variant="subtitle2" mb={2} color="primary">Nouvelle Évaluation</Typography>
@@ -364,10 +432,10 @@ export default function NotesParClasse() {
                   <TextField select fullWidth label="Type" size="small"
                     value={newEvalForm.type}
                     onChange={e => setNewEvalForm({ ...newEvalForm, type: e.target.value })}>
-                    <MenuItem value="DEVOIR1">Devoir 1</MenuItem>
-                    <MenuItem value="DEVOIR2">Devoir 2</MenuItem>
-                    <MenuItem value="COMPOSITION">Composition</MenuItem>
-                    {isClasseExamen && <MenuItem value="EXAMEN_BLANC">Examen Blanc</MenuItem>}
+                    {[['DEVOIR1', 'Devoir 1'], ['DEVOIR2', 'Devoir 2']].map(([k, v]) => {
+                      const deja = evaluations.some(ev => ev.type === k && String(ev.trimestre) === String(newEvalForm.trimestre));
+                      return <MenuItem key={k} value={k} disabled={deja}>{v}{deja ? ' — déjà programmé' : ''}</MenuItem>;
+                    })}
                   </TextField>
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
@@ -403,14 +471,14 @@ export default function NotesParClasse() {
                   disabled={!canPrint} title={!canPrint ? 'Sélectionnez une évaluation existante d\'abord' : ''}>
                   PDF
                 </Button>
-                <Button size="small" variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
+                {saisie && <Button size="small" variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
                   disabled={saving || !canSave}
                   title={!canSave ? 'Sélectionnez une évaluation d\'abord' : ''}>
                   {saving ? 'Enregistrement...' : 'Enregistrer'}
-                </Button>
+                </Button>}
               </Box>
             </Box>
-            {!canSave && (
+            {saisie && !canSave && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 Sélectionnez une évaluation (étape 3) pour pouvoir saisir et enregistrer les notes.
               </Alert>
@@ -438,7 +506,7 @@ export default function NotesParClasse() {
                             type="number" size="small" fullWidth
                             value={notesData[eleve.id] ?? ''}
                             onChange={e => setNotesData(prev => ({ ...prev, [eleve.id]: e.target.value }))}
-                            inputProps={{ step: 0.25, min: 0, max: 20 }}
+                            inputProps={{ step: 0.25, min: 0, max: 20, readOnly: !saisie }}
                             placeholder="—"
                           />
                         </TableCell>

@@ -29,10 +29,17 @@ class Command(BaseCommand):
         from scolarite.models import Inscription, Classe, Trimestre, AnneeScolaire, Niveau
         from cours.models import ClasseMatiere, Enseignant, Matiere
         from accounts.models import User
+        from caisse.models import Paiement, DossierScolarite, TarifNiveau
+        from notifications.models import SmsOutbox, Notification
 
         self.stdout.write(self.style.MIGRATE_HEADING("=== Suppression des donnees scolaires ==="))
 
         steps = [
+            ("Paiements",          Paiement),
+            ("Dossiers scolarite", DossierScolarite),
+            ("Tarifs",             TarifNiveau),
+            ("SMS",                SmsOutbox),
+            ("Notifications",      Notification),
             ("Notes",              Note),
             ("Evaluations",        Evaluation),
             ("Presences",          Presence),

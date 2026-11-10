@@ -1,32 +1,41 @@
 import { useEffect, useState, useRef } from 'react';
-import { enseignantService, userService } from 'services/api';
+import { enseignantService, userService, parametresService } from 'services/api';
+import { genererMotDePasseTemporaire } from 'offline/tempPassword';
 import api from 'services/api';
 import {
   Box, Card, CardContent, Typography, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, CircularProgress, TextField, InputAdornment, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Alert, IconButton, Tooltip, Divider, Chip
+  Alert, IconButton, Tooltip, Divider, Chip, Avatar
 } from '@mui/material';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import CoursEnseignant from './CoursEnseignant';
 import useIsMobile from 'hooks/useIsMobile';
 
-const DEFAULT_PASSWORD = 'Enseignant@2024';
+
+const formaterTel = (n) => {
+  const m = String(n || '').match(/^226(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  return m ? `+226 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : (n || '');
+};
 
 export default function ListeEnseignants() {
   const [enseignants, setEnseignants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterActif, setFilterActif] = useState('all');
+  const [filterClasse, setFilterClasse] = useState('');
 
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -34,11 +43,21 @@ export default function ListeEnseignants() {
   const [credDialog, setCredDialog] = useState(false);
   const [selected, setSelected] = useState(null);
 
+  const [coursPour, setCoursPour] = useState(null); // enseignant dont on gère les cours
+
   // Champs formulaire création
   const [nom, setNom] = useState('');
-  const [username, setUsername] = useState('');
+  const [, setUsername] = useState('');
+  const [telephone, setTelephone] = useState('');
+  const [editTelephone, setEditTelephone] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(DEFAULT_PASSWORD);
+  const [password, setPassword] = useState('');
+  const [defautEcole, setDefautEcole] = useState('');
+
+  // Mot de passe par défaut défini par l'école (Paramètres > Comptes & accès)
+  useEffect(() => {
+    parametresService.get().then((r) => setDefautEcole((r.data?.mot_de_passe_defaut_enseignants || '').trim())).catch(() => {});
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
 
   // Champs modification
@@ -57,10 +76,11 @@ export default function ListeEnseignants() {
   const [error, setError] = useState('');
   const [createdCreds, setCreatedCreds] = useState(null);
   const isMobile = useIsMobile();
+  const compact = useMediaQuery(useTheme().breakpoints.down('md')); // tablette / téléphone : cartes
 
   const fetchData = () => {
     setLoading(true);
-    enseignantService.getAll()
+    enseignantService.getAll('?inclure_suspendus=1')
       .then(res => setEnseignants(res.data))
       .finally(() => setLoading(false));
   };
@@ -72,12 +92,20 @@ export default function ListeEnseignants() {
     const matchActif = filterActif === 'all'
       || (filterActif === 'active' && e.is_active)
       || (filterActif === 'suspended' && !e.is_active);
-    return matchSearch && matchActif;
+    // classe : les enseignants qui y ont au moins un cours, ou qui en sont le professeur principal
+    const matchClasse = !filterClasse || (e.classes || []).some((c) => String(c.id) === String(filterClasse));
+    return matchSearch && matchActif && matchClasse;
   });
 
+  // classes proposées : celles où au moins un enseignant intervient
+  const classesProposees = [...new Map(enseignants.flatMap((e) => e.classes || []).map((c) => [c.id, c.nom])).entries()]
+    .map(([id, nom]) => ({ id, nom }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { numeric: true }));
+
   const openCreate = () => {
-    setNom(''); setUsername(''); setEmail('');
-    setPassword(DEFAULT_PASSWORD); setShowPassword(false);
+    setNom(''); setUsername(''); setTelephone(''); setEmail('');
+    // Défaut de l'école si défini, sinon un mot de passe aléatoire (le serveur impose le changement à la 1re connexion)
+    setPassword(defautEcole || genererMotDePasseTemporaire()); setShowPassword(false);
     setError('');
     setOpen(true);
   };
@@ -86,20 +114,31 @@ export default function ListeEnseignants() {
     setSaving(true);
     setError('');
     try {
-      const ensRes = await enseignantService.create({ nom });
+      const ensRes = await enseignantService.create({ nom, telephone });
       const enseignantId = ensRes.data.id;
+      const login = ensRes.data.telephone; // numéro normalisé par le serveur : c'est l'identifiant de connexion
 
-      const userPayload = { username, password, role: 'ENSEIGNANT', enseignant: enseignantId };
+      const userPayload = { username: login, password, role: 'ENSEIGNANT', enseignant: enseignantId };
       if (email) userPayload.email = email;
-      await userService.create(userPayload);
+      try {
+        await userService.create(userPayload);
+      } catch (errUser) {
+        // Même numéro déjà pris par un compte (ex. parent) : on suffixe, la connexion par téléphone reste possible
+        if (errUser.response?.data?.username) {
+          await userService.create({ ...userPayload, username: `${login}.e` });
+        } else {
+          throw errUser;
+        }
+      }
 
-      setCreatedCreds({ nom, username, password });
+      setCreatedCreds({ nom, username: formaterTel(login), password });
       setOpen(false);
       fetchData();
       setCredDialog(true);
     } catch (err) {
       const data = err.response?.data;
-      if (data?.username) setError(`Identifiant : ${Array.isArray(data.username) ? data.username[0] : data.username}`);
+      if (data?.telephone) setError(`Téléphone : ${Array.isArray(data.telephone) ? data.telephone[0] : data.telephone}`);
+      else if (data?.username) setError(`Identifiant : ${Array.isArray(data.username) ? data.username[0] : data.username}`);
       else if (data?.detail) setError(data.detail);
       else setError("Erreur lors de la création. Vérifiez que l'identifiant n'est pas déjà utilisé.");
     } finally {
@@ -111,6 +150,7 @@ export default function ListeEnseignants() {
     setSelected(e);
     setEditNom(e.nom);
     setEditUsername(e.username || '');
+    setEditTelephone(e.telephone || '');
     setEditEmail(e.email || '');
     setEditPassword('');
     setEditShowPassword(false);
@@ -129,12 +169,13 @@ export default function ListeEnseignants() {
       if (editSigFile) {
         const fd = new FormData();
         fd.append('nom', editNom);
+        fd.append('telephone', editTelephone);
         fd.append('signature', editSigFile);
         await api.patch(`/enseignants/${selected.id}/`, fd, {
           headers: { 'Content-Type': undefined }
         });
       } else {
-        await enseignantService.update(selected.id, { nom: editNom });
+        await enseignantService.update(selected.id, { nom: editNom, telephone: editTelephone });
       }
 
       if (selected.user_id) {
@@ -149,7 +190,8 @@ export default function ListeEnseignants() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       const data = err.response?.data;
-      if (data?.username) setError(`Identifiant : ${Array.isArray(data.username) ? data.username[0] : data.username}`);
+      if (data?.telephone) setError(`Téléphone : ${Array.isArray(data.telephone) ? data.telephone[0] : data.telephone}`);
+      else if (data?.username) setError(`Identifiant : ${Array.isArray(data.username) ? data.username[0] : data.username}`);
       else setError('Erreur lors de la modification.');
     } finally {
       setSaving(false);
@@ -172,26 +214,57 @@ export default function ListeEnseignants() {
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text);
 
+  const initiales = (nom = '') => nom.split(/\s+/).filter(Boolean).slice(0, 2).map((m) => m[0]).join('').toUpperCase() || '?';
+
+  const telephoneCell = (e) => (e.telephone
+    ? <Typography variant="body2">{formaterTel(e.telephone)}</Typography>
+    : <Chip label="Téléphone à renseigner" size="small" color="warning" variant="outlined" clickable onClick={() => handleEdit(e)} />);
+
+  const actionsCell = (e) => (
+    <Box display="flex" gap={0.5} justifyContent="flex-end">
+      <Tooltip title="Ses cours (matières et classes)">
+        <IconButton size="small" color="primary" onClick={() => setCoursPour(e)}><MenuBookIcon fontSize="small" /></IconButton>
+      </Tooltip>
+      <Tooltip title="Modifier">
+        <IconButton size="small" color="primary" onClick={() => handleEdit(e)}><EditIcon fontSize="small" /></IconButton>
+      </Tooltip>
+      <Tooltip title={e.is_active ? 'Suspendre' : 'Réactiver'}>
+        <IconButton size="small" color={e.is_active ? 'warning' : 'success'} onClick={() => { setSelected(e); setSuspendOpen(true); }}>
+          {e.is_active ? <PauseCircleIcon fontSize="small" /> : <PlayCircleIcon fontSize="small" />}
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={1} flexWrap="wrap">
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Gestion des Enseignants</Typography>
-        <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Nouvel Enseignant
-        </Button>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={1} flexWrap="wrap">
+        <Box>
+          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Enseignants</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {enseignants.length} enseignant{enseignants.length > 1 ? 's' : ''}
+            {enseignants.some((e) => !e.telephone) ? ` · ${enseignants.filter((e) => !e.telephone).length} sans téléphone` : ''}
+          </Typography>
+        </Box>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Nouvel enseignant</Button>
       </Box>
 
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
       {error && !open && !editOpen && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
-      <Card>
+      <Card sx={{ borderRadius: 3, boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
         <CardContent>
-          <Box display="flex" gap={2} mb={3}>
-            <TextField fullWidth placeholder="Rechercher par nom..." value={search}
+          <Box display="flex" gap={1.5} mb={2} flexWrap="wrap">
+            <TextField placeholder="Rechercher par nom..." value={search} sx={{ flex: 1, minWidth: 200 }}
               onChange={e => setSearch(e.target.value)} size="small"
               InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
             />
-            <TextField select label="Statut" size="small" sx={{ minWidth: 160 }}
+            <TextField select label="Classe" size="small" sx={{ minWidth: 170 }}
+              value={filterClasse} onChange={e => setFilterClasse(e.target.value)}>
+              <MenuItem value="">Toutes les classes</MenuItem>
+              {classesProposees.map((c) => <MenuItem key={c.id} value={c.id}>{c.nom}</MenuItem>)}
+            </TextField>
+            <TextField select label="Statut" size="small" sx={{ minWidth: 150 }}
               value={filterActif} onChange={e => setFilterActif(e.target.value)}>
               <MenuItem value="all">Tous</MenuItem>
               <MenuItem value="active">Actifs</MenuItem>
@@ -201,60 +274,60 @@ export default function ListeEnseignants() {
 
           {loading ? (
             <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
+          ) : filtered.length === 0 ? (
+            <Alert severity="info">Aucun enseignant trouvé.</Alert>
+          ) : compact ? (
+            <Box display="flex" flexDirection="column" gap={1}>
+              {filtered.map((e) => (
+                <Card key={e.id} variant="outlined" sx={{ borderRadius: 3, opacity: e.is_active ? 1 : 0.65 }}>
+                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Box display="flex" alignItems="center" gap={1.5}>
+                      <Avatar sx={{ bgcolor: 'primary.light', fontWeight: 700 }}>{initiales(e.nom)}</Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={700} noWrap>{e.nom}</Typography>
+                        {!e.is_active && <Chip label="Suspendu" size="small" color="warning" />}
+                      </Box>
+                      {actionsCell(e)}
+                    </Box>
+                    <Box display="flex" gap={1} flexWrap="wrap" alignItems="center" sx={{ mt: 1 }}>
+                      {telephoneCell(e)}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
           ) : (
-            <TableContainer component={Paper} elevation={0}>
-              <Table>
-                <TableHead sx={{ bgcolor: 'primary.main' }}>
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+              <Table sx={{ tableLayout: 'fixed', '& td, & th': { py: 1.25 } }}>
+                <TableHead sx={{ '& th': { color: 'text.secondary', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, bgcolor: 'action.hover' } }}>
                   <TableRow>
-                    <TableCell sx={{ color: 'white' }}><strong>Nom de l'Enseignant</strong></TableCell>
-                    <TableCell sx={{ color: 'white' }}><strong>Statut</strong></TableCell>
-                    <TableCell sx={{ color: 'white' }}><strong>Compte</strong></TableCell>
-                    <TableCell align="right" sx={{ color: 'white' }}><strong>Actions</strong></TableCell>
+                    <TableCell sx={{ width: '34%' }}>Enseignant</TableCell>
+                    <TableCell sx={{ width: '30%' }}>Téléphone (connexion)</TableCell>
+                    <TableCell sx={{ width: '16%' }}>Statut</TableCell>
+                    <TableCell align="right" sx={{ width: '20%' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">Aucun enseignant trouvé</TableCell>
-                    </TableRow>
-                  ) : filtered.map(e => (
-                    <TableRow key={e.id} hover
-                      sx={{ opacity: e.is_active ? 1 : 0.6, bgcolor: e.is_active ? 'inherit' : '#fff8e1' }}>
-                      <TableCell><Typography fontWeight="bold">{e.nom}</Typography></TableCell>
+                  {filtered.map(e => (
+                    <TableRow key={e.id} hover sx={{ '& td': { opacity: e.is_active ? 1 : 0.65 } }}>
                       <TableCell>
-                        {e.is_active
-                          ? <Chip label="Actif" color="success" size="small" />
-                          : <Chip label="Suspendu" color="warning" size="small" />}
-                      </TableCell>
-                      <TableCell>
-                        {e.username
-                          ? <Chip icon={<AccountCircleIcon />} label={e.username} size="small" color="primary" variant="outlined" />
-                          : <Typography variant="caption" color="text.secondary">—</Typography>}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box display="flex" gap={0.5} justifyContent="flex-end">
-                          <Tooltip title="Modifier le nom">
-                            <IconButton size="small" color="primary" onClick={() => handleEdit(e)}>
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title={e.is_active ? 'Suspendre' : 'Réactiver'}>
-                            <IconButton size="small"
-                              color={e.is_active ? 'warning' : 'success'}
-                              onClick={() => { setSelected(e); setSuspendOpen(true); }}>
-                              {e.is_active
-                                ? <PauseCircleIcon fontSize="small" />
-                                : <PlayCircleIcon fontSize="small" />}
-                            </IconButton>
-                          </Tooltip>
+                        <Box display="flex" alignItems="center" gap={1.5}>
+                          <Avatar sx={{ bgcolor: 'primary.light', fontWeight: 700, width: 38, height: 38, fontSize: 14 }}>{initiales(e.nom)}</Avatar>
+                          <Typography fontWeight={700} noWrap>{e.nom}</Typography>
                         </Box>
                       </TableCell>
+                      <TableCell>{telephoneCell(e)}</TableCell>
+                      <TableCell>
+                        <Chip size="small" label={e.is_active ? 'Actif' : 'Suspendu'} color={e.is_active ? 'success' : 'warning'} variant="outlined" />
+                      </TableCell>
+                      <TableCell align="right">{actionsCell(e)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
           )}
+          <CoursEnseignant enseignant={coursPour} open={Boolean(coursPour)} onClose={() => setCoursPour(null)} onChange={fetchData} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
             {filtered.length} enseignant(s)
           </Typography>
@@ -276,9 +349,10 @@ export default function ListeEnseignants() {
             <Typography variant="caption" color="text.secondary">Compte d'accès</Typography>
           </Divider>
           <Box display="flex" flexDirection="column" gap={2}>
-            <TextField fullWidth label="Identifiant (username)" value={username}
-              onChange={e => setUsername(e.target.value)}
-              placeholder="ex: m.dupont" required />
+            <TextField fullWidth label="Téléphone (identifiant de connexion)" value={telephone}
+              onChange={e => setTelephone(e.target.value)}
+              placeholder="ex: 70 12 34 56" required
+              helperText="L'enseignant se connectera avec ce numéro et son mot de passe." />
             <TextField fullWidth label="Email (optionnel)" type="email" value={email}
               onChange={e => setEmail(e.target.value)} />
             <TextField
@@ -300,7 +374,7 @@ export default function ListeEnseignants() {
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={() => setOpen(false)} color="inherit">Annuler</Button>
           <Button variant="contained" onClick={handleCreate}
-            disabled={saving || !nom || !username || !password}>
+            disabled={saving || !nom || !telephone || !password}>
             {saving ? 'Création...' : 'Créer Enseignant + Compte'}
           </Button>
         </DialogActions>
@@ -317,6 +391,10 @@ export default function ListeEnseignants() {
           </Typography>
           <TextField fullWidth label="Nom complet" value={editNom}
             onChange={e => setEditNom(e.target.value)} autoFocus sx={{ mb: 2 }} />
+          <TextField fullWidth label="Téléphone (identifiant de connexion)" value={editTelephone}
+            onChange={e => setEditTelephone(e.target.value)} sx={{ mb: 2 }}
+            placeholder="ex: 70 12 34 56"
+            helperText="Avec ce numéro, l'enseignant peut se connecter (en plus de son identifiant actuel)." />
 
           {/* Cachet / Signature */}
           <Box mb={2}>
@@ -422,10 +500,12 @@ export default function ListeEnseignants() {
 
       {/* ── Dialog Identifiants créés ── */}
       <Dialog open={credDialog} onClose={() => setCredDialog(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
-        <DialogTitle>Compte créé avec succès</DialogTitle>
+        <DialogTitle>{createdCreds?.reset ? 'Mot de passe réinitialisé' : 'Compte créé avec succès'}</DialogTitle>
         <DialogContent>
           <Alert severity="success" sx={{ mb: 2 }}>
-            L'enseignant <strong>{createdCreds?.nom}</strong> a bien été ajouté avec un compte d'accès.
+            {createdCreds?.reset
+              ? <>Le mot de passe de <strong>{createdCreds?.nom}</strong> a été réinitialisé. Il devra le changer à sa prochaine connexion.</>
+              : <>L'enseignant <strong>{createdCreds?.nom}</strong> a bien été ajouté avec un compte d'accès. Il devra changer son mot de passe à sa première connexion.</>}
           </Alert>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Identifiants à transmettre à l'enseignant :

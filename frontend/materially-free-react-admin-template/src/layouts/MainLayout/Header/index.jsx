@@ -1,6 +1,5 @@
 // material-ui
 import AppBar from '@mui/material/AppBar';
-import CardMedia from '@mui/material/CardMedia';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Toolbar from '@mui/material/Toolbar';
@@ -10,12 +9,13 @@ import Box from '@mui/material/Box';
 import Notification from './Notification';
 import Profile from './Profile';
 import Search from './Search';
+import SyncStatusBadge from 'offline/SyncStatusBadge';
+import MarqueEcole from 'components/MarqueEcole';
 
 import { DRAWER_WIDTH } from 'config';
 import { handlerDrawerOpen, useGetMenuMaster } from 'states/menu';
 
 // assets
-import logo from 'assets/images/logo.svg';
 import MenuTwoToneIcon from '@mui/icons-material/MenuTwoTone';
 
 // AppBar props, including styles that vary based on drawer state and screen size
@@ -31,7 +31,7 @@ export default function Header() {
   const mainHeader = (
     <Toolbar>
       <Stack direction="row" sx={{ gap: 1, width: { xs: 1, md: DRAWER_WIDTH }, alignItems: 'center', justifyContent: 'space-between' }}>
-        <CardMedia component="img" image={logo} alt="logo" sx={{ width: 138, display: { xs: 'none', md: 'flex' } }} />
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, minWidth: 0 }}><MarqueEcole largeurMax={DRAWER_WIDTH - 80} /></Box>
         <IconButton
           edge="start"
           sx={{ mr: { xs: 0, sm: 1.25 }, color: 'background.paper' }}
@@ -44,6 +44,7 @@ export default function Header() {
       </Stack>
       <Box sx={{ flexGrow: 1 }} />
       <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+        <SyncStatusBadge />
         <Search />
         <Notification />
         <Profile />

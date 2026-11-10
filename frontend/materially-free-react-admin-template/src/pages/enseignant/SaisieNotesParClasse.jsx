@@ -1,17 +1,21 @@
+import { idTrimestreParDefaut, trimestresEnCours } from 'utils/anneeDefaut';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api, { evaluationService, noteService, trimestreService, eleveService, parametresService, getResults } from 'services/api';
+import api, { evaluationService, trimestreService, eleveService, parametresService, getResults } from 'services/api';
 import {
   Box, Typography, Grid, Card, CardContent, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TextField, MenuItem, Alert, CircularProgress, Divider
+  Paper, TextField, MenuItem, Alert, CircularProgress
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PrintIcon from '@mui/icons-material/Print';
 import DownloadIcon from '@mui/icons-material/Download';
 import { ListeNotesPrint } from 'pages/admin/NotesParClasse';
+import { readThrough, cacheSet, CacheKeys, NEVER_CACHED_MSG } from 'offline/cacheStore';
+import { sendOrQueue, QUEUED_MSG } from 'offline/syncManager';
 
+import { estEnLigne } from 'offline/reseau';
 const TYPE_LABELS = { DEVOIR1: 'Devoir 1', DEVOIR2: 'Devoir 2', COMPOSITION: 'Composition', EXAMEN_BLANC: 'Examen Blanc' };
 
 export default function SaisieNotesParClasse() {
@@ -36,29 +40,58 @@ export default function SaisieNotesParClasse() {
   const [ecole, setEcole] = useState({});
 
   useEffect(() => {
-    parametresService.get().then(res => setEcole(res.data)).catch(() => {});
+    readThrough(CacheKeys.parametres(), async () => {
+      const res = await parametresService.get();
+      return res.data;
+    }).then((r) => { if (r.data) setEcole(r.data); }).catch(() => {});
+
     const load = async () => {
       setLoading(true);
+      setError('');
       try {
-        const resCM = await api.get(`/classe-matieres/${classeMatiereId}/`);
-        setClasseMatiere(resCM.data);
+        const cmResult = await readThrough(CacheKeys.classeMatiere(classeMatiereId), async () => {
+          const resCM = await api.get(`/classe-matieres/${classeMatiereId}/`);
+          return resCM.data;
+        });
+        if (cmResult.neverCached || !cmResult.data) {
+          setError(NEVER_CACHED_MSG);
+          return;
+        }
+        setClasseMatiere(cmResult.data);
 
-        const [resT, resEl, resEv] = await Promise.all([
-          trimestreService.getAll(),
-          eleveService.getAll(`/eleves/?classe_id=${resCM.data.classe}`),
-          evaluationService.getAll(),
+        const [tResult, elResult, evResult] = await Promise.all([
+          readThrough(CacheKeys.trimestres(), async () => {
+            const resT = await trimestreService.getAll();
+            return Array.isArray(resT.data) ? resT.data : (resT.data.results || []);
+          }),
+          readThrough(CacheKeys.elevesClasse(cmResult.data.classe), async () => {
+            const resEl = await eleveService.getAll(`/eleves/?classe_id=${cmResult.data.classe}`);
+            const { items } = getResults(resEl);
+            return items;
+          }),
+          readThrough(CacheKeys.evaluations(), async () => {
+            const resEv = await evaluationService.getAll();
+            return Array.isArray(resEv.data) ? resEv.data : (resEv.data.results || []);
+          }),
         ]);
 
-        setTrimestres(resT.data);
-        const { items: elevesItems } = getResults(resEl);
+        if (elResult.neverCached || !elResult.data) {
+          setError(NEVER_CACHED_MSG);
+          return;
+        }
+
+        setTrimestres(trimestresEnCours(tResult.data));
+        setNewEvalForm(f => ({ ...f, trimestre: f.trimestre || idTrimestreParDefaut(tResult.data || []) }));
+        const elevesItems = elResult.data;
         setEleves(elevesItems);
-        setEvaluations(resEv.data.filter(ev => ev.classe_matiere === parseInt(classeMatiereId)));
+        const allEvals = evResult.data || [];
+        setEvaluations(allEvals.filter((ev) => ev.classe_matiere === parseInt(classeMatiereId, 10)));
 
         const init = {};
-        elevesItems.forEach(el => { init[el.id] = ''; });
+        elevesItems.forEach((el) => { init[el.id] = ''; });
         setNotes(init);
       } catch {
-        setError('Erreur lors du chargement des données.');
+        setError(estEnLigne() ? 'Erreur lors du chargement des données.' : NEVER_CACHED_MSG);
       } finally {
         setLoading(false);
       }
@@ -66,57 +99,90 @@ export default function SaisieNotesParClasse() {
     load();
   }, [classeMatiereId]);
 
-  const handleEvalChange = (e) => {
+  const handleEvalChange = async (e) => {
     const val = e.target.value;
     if (val === 'NEW') {
       setIsNewEval(true);
       setSelectedEvalId('');
-    } else {
-      setIsNewEval(false);
-      setSelectedEvalId(val);
-      if (val) {
-        evaluationService.getNotes(val).then(res => {
-          setNotes(prev => {
-            // Initialiser à 0 pour les élèves sans note
-            const updated = {};
-            Object.keys(prev).forEach(id => { updated[id] = 0; });
-            res.data.forEach(n => { if (String(n.eleve) in updated) updated[n.eleve] = n.valeur; });
-            return updated;
-          });
-        });
-      }
+      return;
     }
+    setIsNewEval(false);
+    setSelectedEvalId(val);
+    if (!val) return;
+    try {
+      const result = await readThrough(CacheKeys.evalNotes(val), async () => {
+        const res = await evaluationService.getNotes(val);
+        return res.data;
+      });
+      if (result.neverCached) return;
+      const list = result.data || [];
+      setNotes((prev) => {
+        const updated = {};
+        Object.keys(prev).forEach((id) => { updated[id] = 0; });
+        list.forEach((n) => { if (String(n.eleve) in updated) updated[n.eleve] = n.valeur; });
+        return updated;
+      });
+    } catch { /* ignore */ }
   };
 
   const handleSubmit = async () => {
     setSaving(true);
     setError('');
     try {
-      let evalId = selectedEvalId;
-
-      if (isNewEval) {
-        if (!newEvalForm.trimestre) throw new Error('Veuillez sélectionner un trimestre.');
-        const res = await evaluationService.create({
-          classe_matiere: parseInt(classeMatiereId),
-          trimestre: parseInt(newEvalForm.trimestre),
-          type: newEvalForm.type,
-          coefficient: parseFloat(newEvalForm.coefficient),
-        });
-        evalId = res.data.id;
+      if (isNewEval && !newEvalForm.trimestre) {
+        throw new Error('Veuillez sélectionner un trimestre.');
       }
 
       const notesToSubmit = Object.entries(notes)
         .filter(([, v]) => v !== '' && v !== null)
-        .map(([eleveId, valeur]) => ({ eleve_id: parseInt(eleveId), valeur: parseFloat(valeur) }));
+        .map(([eleveId, valeur]) => ({ eleve_id: parseInt(eleveId, 10), valeur: parseFloat(valeur) }));
 
       if (notesToSubmit.length === 0) throw new Error('Aucune note à enregistrer.');
 
-      await noteService.saisieMasse({ evaluation_id: evalId, notes: notesToSubmit });
-      setSuccess(`${notesToSubmit.length} note(s) enregistrée(s) !`);
+      const payload = {
+        evaluation_id: isNewEval ? null : parseInt(selectedEvalId, 10),
+        create_evaluation: isNewEval ? {
+          classe_matiere: parseInt(classeMatiereId, 10),
+          trimestre: parseInt(newEvalForm.trimestre, 10),
+          type: newEvalForm.type,
+          coefficient: parseFloat(newEvalForm.coefficient),
+        } : null,
+        notes: notesToSubmit,
+      };
+
+      const result = await sendOrQueue({
+        kind: 'notes_batch',
+        payload,
+        label: 'Saisie notes',
+      });
+
+      if (payload.evaluation_id) {
+        await cacheSet(
+          CacheKeys.evalNotes(payload.evaluation_id),
+          notesToSubmit.map((n) => ({
+            eleve: n.eleve_id,
+            valeur: n.valeur,
+            evaluation: payload.evaluation_id,
+          }))
+        );
+      }
+
+      setSuccess(result.queued
+        ? QUEUED_MSG
+        : `${notesToSubmit.length} note(s) enregistrée(s) !`);
       setIsNewEval(false);
-      const resEv = await evaluationService.getAll();
-      setEvaluations(resEv.data.filter(ev => ev.classe_matiere === parseInt(classeMatiereId)));
-      setTimeout(() => setSuccess(''), 4000);
+      if (!result.queued && estEnLigne()) {
+        try {
+          const resEv = await evaluationService.getAll();
+          const list = Array.isArray(resEv.data) ? resEv.data : (resEv.data.results || []);
+          await cacheSet(CacheKeys.evaluations(), list);
+          setEvaluations(list.filter((ev) => ev.classe_matiere === parseInt(classeMatiereId, 10)));
+          if (result.data && payload.create_evaluation) {
+            // evaluation id may be in nested flow — refresh list already done
+          }
+        } catch { /* ignore */ }
+      }
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       setError(err.message || err.response?.data?.detail || "Erreur lors de l'enregistrement.");
     } finally {
@@ -208,10 +274,10 @@ export default function SaisieNotesParClasse() {
                   <TextField select fullWidth label="Type" size="small"
                     value={newEvalForm.type}
                     onChange={e => setNewEvalForm({ ...newEvalForm, type: e.target.value })}>
-                    <MenuItem value="DEVOIR1">Devoir 1</MenuItem>
-                    <MenuItem value="DEVOIR2">Devoir 2</MenuItem>
-                    <MenuItem value="COMPOSITION">Composition</MenuItem>
-                    {classeMatiere?.niveau_is_classe_examen && <MenuItem value="EXAMEN_BLANC">Examen Blanc</MenuItem>}
+                    {[['DEVOIR1', 'Devoir 1'], ['DEVOIR2', 'Devoir 2']].map(([k, v]) => {
+                      const deja = evaluations.some(ev => ev.type === k && String(ev.trimestre) === String(newEvalForm.trimestre));
+                      return <MenuItem key={k} value={k} disabled={deja}>{v}{deja ? ' — déjà programmé' : ''}</MenuItem>;
+                    })}
                   </TextField>
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>

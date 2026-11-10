@@ -1,15 +1,19 @@
 import { Navigate } from 'react-router-dom';
 import authService from 'services/auth';
 
-/**
- * Route protégée par rôle.
- * Si l'utilisateur n'a pas le bon rôle, il est redirigé vers le dashboard par défaut.
- */
-export default function RoleRoute({ children, roles }) {
-  const role = authService.getRole();
+export default function RoleRoute({ children, roles = [], plateformeOnly = false, plateformeOk = false, sansDirecteur = false }) {
+  if (plateformeOnly) {
+    return authService.isPlateforme()
+      ? children
+      : <Navigate to="/dashboard/default" replace />;
+  }
 
-  // L'admin a accès à toutes les pages sans restriction
-  if (role === 'ADMIN' || roles.includes(role)) {
+  if (plateformeOk && authService.isPlateforme()) {
+    return children;
+  }
+
+  const role = authService.getRole();
+  if ((role === 'ADMIN' && !sansDirecteur) || roles.some((r) => authService.getRoles().includes(r))) {
     return children;
   }
 

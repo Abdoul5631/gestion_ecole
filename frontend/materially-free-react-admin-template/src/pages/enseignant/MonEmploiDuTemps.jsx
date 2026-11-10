@@ -3,7 +3,11 @@ import api, { emploiService } from 'services/api';
 import { Box, Card, CardContent, Typography, CircularProgress, Chip, Alert } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import authService from 'services/auth';
+import useSelectedEnfant from 'hooks/useSelectedEnfant';
+import EnfantSelector from 'components/EnfantSelector';
+import { readThrough, CacheKeys, NEVER_CACHED_MSG } from 'offline/cacheStore';
 
+import { estEnLigne } from 'offline/reseau';
 const JOURS = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI'];
 const JOURS_LABELS = { LUNDI: 'Lundi', MARDI: 'Mardi', MERCREDI: 'Mercredi', JEUDI: 'Jeudi', VENDREDI: 'Vendredi', SAMEDI: 'Samedi' };
 const CRENEAUX = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
@@ -21,31 +25,44 @@ export default function MonEmploiDuTemps() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const role = authService.getRole();
+  const { enfants, selectedId, setSelectedId, loading: loadingEnfants } = useSelectedEnfant();
 
   useEffect(() => {
+    if (role === 'PARENT' && loadingEnfants) return;
     const load = async () => {
       try {
-        let url = '/emploi-du-temps/';
-        if (role === 'ELEVE' || role === 'PARENT') {
-          // Récupérer la classe de l'élève via inscription
-          const me = await api.get('/auth/me/');
-          if (me.data.eleve) {
-            const insc = await api.get(`/eleves/${me.data.eleve}/inscriptions/`);
-            const data = Array.isArray(insc.data) ? insc.data : insc.data.results ?? [];
-            const active = data.find(i => i.is_active || !i.hasOwnProperty('is_active'));
-            if (active?.classe) url = `/emploi-du-temps/?classe_id=${active.classe}`;
+        const cacheParam = role === 'PARENT' ? `eleve:${selectedId || 'aucun'}` : (role === 'ELEVE' ? 'eleve' : 'enseignant');
+        const result = await readThrough(CacheKeys.emploi(cacheParam), async () => {
+          let url = '/emploi-du-temps/';
+          if (role === 'ELEVE' || role === 'PARENT') {
+            // parent : l'enfant choisi ; élève : lui-même. Jamais l'emploi du temps de toute l'école.
+            const eleveId = role === 'PARENT' ? selectedId : (await api.get('/auth/me/')).data.eleve;
+            if (!eleveId) return [];
+            {
+              const insc = await api.get(`/eleves/${eleveId}/inscriptions/`);
+              const data = Array.isArray(insc.data) ? insc.data : insc.data.results ?? [];
+              const active = data.find(i => i.is_active || !Object.prototype.hasOwnProperty.call(i, 'is_active'));
+              if (!active?.classe) return [];
+              url = `/emploi-du-temps/?classe_id=${active.classe}`;
+            }
           }
+          const res = await api.get(url);
+          return Array.isArray(res.data) ? res.data : res.data.results ?? [];
+        });
+        if (result.neverCached) {
+          setError(NEVER_CACHED_MSG);
+          setEmplois([]);
+        } else {
+          setEmplois(result.data || []);
         }
-        const res = await api.get(url);
-        setEmplois(Array.isArray(res.data) ? res.data : res.data.results ?? []);
       } catch {
-        setError("Impossible de charger l'emploi du temps.");
+        setError(estEnLigne() ? "Impossible de charger l'emploi du temps." : NEVER_CACHED_MSG);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [role, selectedId, loadingEnfants]);
 
   const grille = {};
   JOURS.forEach(j => { grille[j] = {}; });
@@ -70,6 +87,7 @@ export default function MonEmploiDuTemps() {
         </Typography>
       </Box>
 
+      {role === 'PARENT' && <EnfantSelector enfants={enfants} selectedId={selectedId} setSelectedId={setSelectedId} loading={loadingEnfants} />}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {emplois.length === 0 && !error ? (

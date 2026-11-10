@@ -1,147 +1,163 @@
-import { useEffect, useState } from 'react';
-import api from 'services/api';
+import { useEffect, useMemo, useState } from 'react';
+import api, { anneeService, getResults } from 'services/api';
+import { readThrough, scopedKey, NEVER_CACHED_MSG } from 'offline/cacheStore';
 import {
-  Box, Card, CardContent, Typography, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper,
-  CircularProgress, Chip, TextField, MenuItem, Alert,
-  Grid, Divider
+  Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Grid, InputAdornment, MenuItem,
+  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography
 } from '@mui/material';
 import GradeIcon from '@mui/icons-material/Grade';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
 
-const TYPE_LABELS = { DEVOIR1: 'Devoir 1', DEVOIR2: 'Devoir 2', COMPOSITION: 'Composition', EXAMEN_BLANC: 'Examen Blanc' };
-const TYPE_COLORS = { DEVOIR1: 'primary', DEVOIR2: 'secondary', COMPOSITION: 'warning', EXAMEN_BLANC: 'error' };
+const TYPE_LABELS = { DEVOIR1: 'Devoir 1', DEVOIR2: 'Devoir 2', COMPOSITION: 'Composition' };
 
-function fmt(val) {
-  if (val === null || val === undefined) return '—';
-  if (typeof val === 'number') return val.toFixed(2);
-  return val;
+const couleur = (v) => (v >= 10 ? { bg: '#e8f5e9', fg: '#2e7d32' } : { bg: '#ffebee', fg: '#c62828' });
+const fmt = (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 2 }));
+
+function Pastille({ valeur }) {
+  if (valeur === null || valeur === undefined) return <Typography color="text.disabled">—</Typography>;
+  const c = couleur(valeur);
+  return (
+    <Box sx={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 52, height: 30,
+      px: 1, borderRadius: 2, fontWeight: 700, bgcolor: c.bg, color: c.fg,
+    }}>
+      {fmt(valeur)}
+    </Box>
+  );
+}
+
+function Stat({ label, value, sub, color = 'primary' }) {
+  return (
+    <Card sx={{ borderRadius: 3, height: '100%' }}>
+      <CardContent sx={{ textAlign: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
+        <Typography variant="h3" fontWeight="bold" color={`${color}.main`}>{value}</Typography>
+        <Typography variant="body2" color="text.secondary">{label}</Typography>
+        {sub && <Typography variant="caption" color="text.secondary">{sub}</Typography>}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function MesNotes() {
-  const [classeMatieres, setClasseMatieres] = useState([]);
+  const [cours, setCours] = useState([]);
   const [trimestres, setTrimestres] = useState([]);
-  const [evaluations, setEvaluations] = useState([]);
-  const [notes, setNotes] = useState([]);
+  const [coursId, setCoursId] = useState('');
+  const [trimestreId, setTrimestreId] = useState('');
+  const [carnet, setCarnet] = useState(null);
   const [loadingRef, setLoadingRef] = useState(true);
-  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [recherche, setRecherche] = useState('');
+  const [tri, setTri] = useState('nom'); // 'nom' | 'moyenne'
 
-  const [filterClasse, setFilterClasse] = useState('');
-  const [filterTrimestre, setFilterTrimestre] = useState('');
-  const [filterEval, setFilterEval] = useState('');
-
-  // Chargement données de référence
+  // Cours de l'enseignant + trimestres de l'année en cours
   useEffect(() => {
-    setLoadingRef(true);
-    Promise.all([
-      api.get('/classe-matieres/'),
-      api.get('/trimestres/'),
-    ]).then(([cmRes, triRes]) => {
-      setClasseMatieres(cmRes.data);
-      setTrimestres(triRes.data);
-    }).catch(() => setError('Erreur de chargement des données.')).finally(() => setLoadingRef(false));
+    (async () => {
+      try {
+        const [cmRes, anRes] = await Promise.all([api.get('/classe-matieres/'), anneeService.getActive().catch(() => null)]);
+        const cms = getResults(cmRes).items.filter((c) => c.classe);
+        cms.sort((a, b) => `${a.classe_nom}${a.matiere_nom}`.localeCompare(`${b.classe_nom}${b.matiere_nom}`));
+        const anneeId = anRes?.data?.id;
+        const trRes = await api.get(`/trimestres/${anneeId ? `?annee_id=${anneeId}` : ''}`);
+        const tris = getResults(trRes).items;
+        setCours(cms);
+        setTrimestres(tris);
+        if (tris.length) setTrimestreId(String(tris[0].id));
+        // Ouvre directement le premier cours qui a déjà des évaluations
+        let premier = cms[0];
+        if (tris.length) {
+          try {
+            const evRes = await api.get(`/evaluations/?trimestre_id=${tris[0].id}`);
+            const avecEval = new Set(getResults(evRes).items.map((e) => e.classe_matiere));
+            premier = cms.find((c) => avecEval.has(c.id)) || cms[0];
+          } catch { /* on garde le premier cours */ }
+        }
+        if (premier) setCoursId(String(premier.id));
+      } catch {
+        setError('Erreur de chargement des données.');
+      } finally {
+        setLoadingRef(false);
+      }
+    })();
   }, []);
 
-  // Chargement évaluations quand classe ou trimestre change
   useEffect(() => {
-    setEvaluations([]);
-    setFilterEval('');
-    setNotes([]);
-    if (!filterClasse) return;
+    if (!coursId || !trimestreId) return;
+    setLoading(true);
+    setError('');
+    readThrough(scopedKey(`carnet:${coursId}:${trimestreId}`), async () => (
+      (await api.get(`/evaluations/carnet/?classe_matiere_id=${coursId}&trimestre_id=${trimestreId}`)).data
+    ))
+      .then((r) => {
+        if (r.neverCached) setError(NEVER_CACHED_MSG);
+        setCarnet(r.data);
+      })
+      .catch(() => setError('Impossible de charger le carnet de notes.'))
+      .finally(() => setLoading(false));
+  }, [coursId, trimestreId]);
 
-    // IDs des ClasseMatiere de cette classe
-    const cmIdsDeClasse = classeMatieres
-      .filter(cm => String(cm.classe) === String(filterClasse))
-      .map(cm => cm.id);
+  const eleves = useMemo(() => {
+    let list = carnet?.eleves || [];
+    const q = recherche.trim().toLowerCase();
+    if (q) list = list.filter((e) => `${e.nom} ${e.prenom} ${e.matricule}`.toLowerCase().includes(q));
+    if (tri === 'moyenne') {
+      list = [...list].sort((a, b) => (b.moyenne ?? -1) - (a.moyenne ?? -1));
+    }
+    return list;
+  }, [carnet, recherche, tri]);
 
-    api.get('/evaluations/').then(res => {
-      let evals = res.data.filter(e => cmIdsDeClasse.includes(e.classe_matiere));
-      if (filterTrimestre) evals = evals.filter(e => String(e.trimestre) === String(filterTrimestre));
-      setEvaluations(evals);
-    }).catch(() => {});
-  }, [filterClasse, filterTrimestre, classeMatieres]);
+  const exporterCsv = () => {
+    if (!carnet) return;
+    const evs = carnet.evaluations;
+    const entete = ['Rang', 'Matricule', 'Nom', 'Prénom', ...evs.map((e) => `${TYPE_LABELS[e.type] || e.type}${e.date ? ` (${e.date})` : ''}`), 'Moyenne /20'];
+    const lignes = carnet.eleves.map((e) => [
+      e.rang ?? '', e.matricule, e.nom, e.prenom, ...evs.map((ev) => e.notes[String(ev.id)] ?? ''), e.moyenne ?? '',
+    ]);
+    const csv = [entete, ...lignes].map((l) => l.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `notes-${carnet.classe_matiere.classe_nom}-${carnet.classe_matiere.matiere_nom}-${carnet.trimestre.nom}.csv`.replace(/\s+/g, '_');
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
 
-  // Chargement notes quand évaluation sélectionnée
-  useEffect(() => {
-    setNotes([]);
-    if (!filterEval) return;
-    setLoadingNotes(true);
-    api.get(`/evaluations/${filterEval}/notes/`)
-      .then(res => setNotes(res.data))
-      .catch(() => setError('Erreur de chargement des notes.'))
-      .finally(() => setLoadingNotes(false));
-  }, [filterEval]);
-
-  // Options de classes (dédupliquées depuis classeMatieres)
-  const classeOptions = [
-    ...new Map(
-      classeMatieres.map(cm => [cm.classe, { id: cm.classe, nom: cm.classe_nom }])
-    ).values()
-  ];
-
-  const evalSelected = evaluations.find(e => String(e.id) === String(filterEval));
-
-  const moyenne = notes.length > 0
-    ? (notes.reduce((s, n) => s + parseFloat(n.valeur || 0), 0) / notes.length).toFixed(2)
-    : null;
+  const stats = carnet?.stats;
+  const evs = carnet?.evaluations || [];
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" gap={1.5} mb={3}>
+      <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
         <GradeIcon sx={{ color: 'primary.main', fontSize: 30 }} />
-        <Typography variant="h4" fontWeight="bold">Notes</Typography>
+        <Typography variant="h4" fontWeight="bold">Carnet de notes</Typography>
       </Box>
+      <Typography color="text.secondary" sx={{ mb: 2 }}>
+        Choisissez votre cours : tous les élèves de la classe s&apos;affichent avec leurs notes, leur moyenne et leur rang.
+      </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {error && <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
-      {/* Filtres */}
-      <Card sx={{ mb: 3, borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+      <Card sx={{ mb: 2, borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
         <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
-            <FilterListIcon color="action" />
-            <Typography variant="subtitle1" fontWeight="bold">Filtres</Typography>
-          </Box>
           {loadingRef ? (
-            <Box display="flex" justifyContent="center" p={2}><CircularProgress size={24} /></Box>
+            <Box display="flex" justifyContent="center" p={1}><CircularProgress size={24} /></Box>
+          ) : cours.length === 0 ? (
+            <Alert severity="info">
+              Aucune classe ne vous est affectée pour le moment. Demandez à la direction de vous affecter une matière dans une classe.
+            </Alert>
           ) : (
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  select fullWidth label="Classe" size="small"
-                  value={filterClasse}
-                  onChange={e => { setFilterClasse(e.target.value); setFilterTrimestre(''); setFilterEval(''); }}>
-                  <MenuItem value="">Toutes les classes</MenuItem>
-                  {classeOptions.map(c => (
-                    <MenuItem key={c.id} value={c.id}>{c.nom}</MenuItem>
-                  ))}
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField select fullWidth size="small" label="Mon cours (classe — matière)" value={coursId}
+                  onChange={(e) => setCoursId(e.target.value)}>
+                  {cours.map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.classe_nom} — {c.matiere_nom}</MenuItem>)}
                 </TextField>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  select fullWidth label="Trimestre" size="small"
-                  value={filterTrimestre}
-                  onChange={e => { setFilterTrimestre(e.target.value); setFilterEval(''); }}
-                  disabled={!filterClasse}>
-                  <MenuItem value="">Tous les trimestres</MenuItem>
-                  {trimestres.map(t => (
-                    <MenuItem key={t.id} value={t.id}>{t.nom} — {t.annee_libelle}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  select fullWidth label="Évaluation (Devoir)" size="small"
-                  value={filterEval}
-                  onChange={e => setFilterEval(e.target.value)}
-                  disabled={!filterClasse || evaluations.length === 0}>
-                  <MenuItem value="">Sélectionner une évaluation</MenuItem>
-                  {evaluations.map(e => (
-                    <MenuItem key={e.id} value={e.id}>
-                      {TYPE_LABELS[e.type] || e.type} — {e.matiere_nom}
-                      {e.date ? ` (${e.date})` : ''}
-                    </MenuItem>
-                  ))}
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <TextField select fullWidth size="small" label="Trimestre" value={trimestreId}
+                  onChange={(e) => setTrimestreId(e.target.value)}>
+                  {trimestres.map((t) => <MenuItem key={t.id} value={String(t.id)}>{t.nom}</MenuItem>)}
                 </TextField>
               </Grid>
             </Grid>
@@ -149,147 +165,98 @@ export default function MesNotes() {
         </CardContent>
       </Card>
 
-      {/* Résultat */}
-      {!filterClasse && (
-        <Box textAlign="center" py={6} color="text.secondary">
-          <GradeIcon sx={{ fontSize: 60, opacity: 0.2, mb: 1 }} />
-          <Typography>Sélectionnez une classe pour voir les notes.</Typography>
-        </Box>
-      )}
+      {loading ? (
+        <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+      ) : carnet && (
+        <>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Stat label="Moyenne de la classe" value={stats.moyenne_classe === null ? '—' : fmt(stats.moyenne_classe)}
+                sub="sur 20" color={stats.moyenne_classe >= 10 ? 'success' : 'error'} />
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Stat label="Taux de réussite" value={stats.taux_reussite === null ? '—' : `${stats.taux_reussite}%`} sub="moyenne ≥ 10" color="primary" />
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Stat label="Meilleure moyenne" value={fmt(stats.meilleure)} color="success" />
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <Stat label="Plus faible" value={fmt(stats.plus_faible)} color="warning" />
+            </Grid>
+          </Grid>
 
-      {filterClasse && !filterEval && evaluations.length === 0 && !loadingRef && (
-        <Alert severity="info">
-          Aucune évaluation trouvée pour cette classe
-          {filterTrimestre ? ' et ce trimestre' : ''}.
-        </Alert>
-      )}
-
-      {filterClasse && !filterEval && evaluations.length > 0 && (
-        <Card sx={{ borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-          <CardContent>
-            <Typography variant="subtitle1" fontWeight="bold" mb={2}>
-              {evaluations.length} évaluation(s) — sélectionnez-en une pour voir les notes
-            </Typography>
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead sx={{ bgcolor: 'grey.100' }}>
-                  <TableRow>
-                    <TableCell><strong>Matière</strong></TableCell>
-                    <TableCell><strong>Type</strong></TableCell>
-                    <TableCell><strong>Trimestre</strong></TableCell>
-                    <TableCell><strong>Date</strong></TableCell>
-                    <TableCell><strong>Coef</strong></TableCell>
-                    <TableCell><strong>Statut</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {evaluations.map(e => (
-                    <TableRow key={e.id} hover
-                      sx={{ cursor: 'pointer', bgcolor: !e.is_active ? '#fff8e1' : 'inherit' }}
-                      onClick={() => setFilterEval(String(e.id))}>
-                      <TableCell><strong>{e.matiere_nom}</strong></TableCell>
-                      <TableCell>
-                        <Chip label={TYPE_LABELS[e.type] || e.type} color={TYPE_COLORS[e.type] || 'default'} size="small" />
-                      </TableCell>
-                      <TableCell>{e.trimestre_nom}</TableCell>
-                      <TableCell>{e.date || '—'}</TableCell>
-                      <TableCell>{e.coefficient}</TableCell>
-                      <TableCell>
-                        <Chip label={e.is_active ? 'Active' : 'Annulée'}
-                          color={e.is_active ? 'success' : 'default'}
-                          size="small" variant={e.is_active ? 'filled' : 'outlined'} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {filterEval && (
-        <Card sx={{ borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-          <CardContent>
-            {/* En-tête évaluation */}
-            {evalSelected && (
-              <Box mb={2}>
-                <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                  <Chip label={TYPE_LABELS[evalSelected.type] || evalSelected.type}
-                    color={TYPE_COLORS[evalSelected.type] || 'default'} />
-                  <Typography variant="h6" fontWeight="bold">{evalSelected.matiere_nom}</Typography>
-                  <Typography color="text.secondary">·</Typography>
-                  <Typography color="text.secondary">{evalSelected.trimestre_nom}</Typography>
-                  {evalSelected.date && (
-                    <><Typography color="text.secondary">·</Typography>
-                    <Typography color="text.secondary">{evalSelected.date}</Typography></>
-                  )}
-                  <Typography color="text.secondary">· Coef {evalSelected.coefficient}</Typography>
-                </Box>
-                {moyenne && (
-                  <Box mt={1} display="flex" gap={2}>
-                    <Chip
-                      label={`Moyenne classe : ${moyenne}/20`}
-                      color={parseFloat(moyenne) >= 10 ? 'success' : 'error'}
-                      sx={{ fontWeight: 'bold' }}
-                    />
-                    <Chip label={`${notes.length} note(s) saisie(s)`} variant="outlined" />
+          {evs.length === 0 ? (
+            <Alert severity="info">
+              Aucune évaluation pour {carnet.classe_matiere.matiere_nom} en {carnet.classe_matiere.classe_nom} ce trimestre.
+              Les notes saisies depuis « Mes cours » apparaîtront ici.
+            </Alert>
+          ) : (
+            <Card sx={{ borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mb={2}>
+                  <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
+                    <Typography variant="h5" fontWeight={700}>
+                      {carnet.classe_matiere.classe_nom} — {carnet.classe_matiere.matiere_nom}
+                    </Typography>
+                    <Chip size="small" variant="outlined" label={`${stats.effectif} élève${stats.effectif > 1 ? 's' : ''}`} />
+                    {stats.sans_note > 0 && <Chip size="small" color="warning" variant="outlined" label={`${stats.sans_note} sans note`} />}
                   </Box>
-                )}
-              </Box>
-            )}
-            <Divider sx={{ mb: 2 }} />
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    <TextField size="small" placeholder="Rechercher un élève…" value={recherche}
+                      onChange={(e) => setRecherche(e.target.value)}
+                      InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                    <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exporterCsv}>Télécharger</Button>
+                  </Box>
+                </Box>
 
-            {loadingNotes ? (
-              <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
-            ) : notes.length === 0 ? (
-              <Box textAlign="center" py={3}>
-                <Typography color="text.secondary">Aucune note saisie pour cette évaluation.</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Allez dans Mes Cours pour saisir les notes.
-                </Typography>
-              </Box>
-            ) : (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: 'grey.100' }}>
-                    <TableRow>
-                      <TableCell><strong>#</strong></TableCell>
-                      <TableCell><strong>Élève</strong></TableCell>
-                      <TableCell><strong>Matricule</strong></TableCell>
-                      <TableCell align="center"><strong>Note /20</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {notes.map((n, i) => (
-                      <TableRow key={n.id} hover>
-                        <TableCell sx={{ color: 'text.secondary', width: 40 }}>{i + 1}</TableCell>
-                        <TableCell>
-                          <Typography fontWeight="medium" variant="body2">
-                            {n.eleve_nom} {n.eleve_prenom}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" color="text.secondary">{n.eleve_matricule || '—'}</Typography>
-                        </TableCell>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: 'grey.100' }}>
+                      <TableRow>
+                        <TableCell><strong>Élève</strong></TableCell>
+                        {evs.map((e) => (
+                          <TableCell key={e.id} align="center">
+                            <strong>{TYPE_LABELS[e.type] || e.type}</strong>
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              {e.date ? new Date(`${e.date}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : ''} · coef {e.coefficient}
+                            </Typography>
+                          </TableCell>
+                        ))}
                         <TableCell align="center">
-                          <Box sx={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: 56, height: 32, borderRadius: 2, fontWeight: 'bold',
-                            bgcolor: parseFloat(n.valeur) >= 10 ? '#e8f5e9' : '#ffebee',
-                            color: parseFloat(n.valeur) >= 10 ? '#2e7d32' : '#c62828',
-                          }}>
-                            {fmt(parseFloat(n.valeur))}
-                          </Box>
+                          <TableSortLabel active={tri === 'moyenne'} direction="desc"
+                            onClick={() => setTri(tri === 'moyenne' ? 'nom' : 'moyenne')}>
+                            <strong>Moyenne</strong>
+                          </TableSortLabel>
                         </TableCell>
+                        <TableCell align="center"><strong>Rang</strong></TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHead>
+                    <TableBody>
+                      {eleves.length === 0 ? (
+                        <TableRow><TableCell colSpan={evs.length + 3} align="center">Aucun élève trouvé</TableCell></TableRow>
+                      ) : eleves.map((e) => (
+                        <TableRow key={e.eleve_id} hover>
+                          <TableCell>
+                            <Typography fontWeight={600} variant="body2">{e.prenom} {e.nom}</Typography>
+                            <Typography variant="caption" color="text.secondary">{e.matricule}</Typography>
+                          </TableCell>
+                          {evs.map((ev) => (
+                            <TableCell key={ev.id} align="center"><Pastille valeur={e.notes[String(ev.id)]} /></TableCell>
+                          ))}
+                          <TableCell align="center"><Pastille valeur={e.moyenne} /></TableCell>
+                          <TableCell align="center">{e.rang ? `${e.rang}${e.rang === 1 ? 'er' : 'e'}` : '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                  La moyenne est pondérée par les coefficients des évaluations, sur 20. Cliquez sur « Moyenne » pour classer du meilleur au plus faible.
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </Box>
   );
